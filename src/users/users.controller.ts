@@ -1,54 +1,71 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body } from '@nestjs/common'
-import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger'
-import { UsersService }    from './users.service'
-import { successResponse } from '../common/api-utils'
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Request,
+} from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { AuthGuard } from "@nestjs/passport";
+import { UsersService } from "./users.service";
+import { successResponse } from "../common/api-utils";
 
-@ApiTags('Users')
-@Controller('users')
+@ApiTags("Users")
+@ApiBearerAuth()
+@UseGuards(AuthGuard("jwt"))
+@Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get(':userId/profile')
-  @ApiOperation({ summary: 'Get user profile' })
-  @ApiParam({ name: 'userId' })
-  getProfile(@Param('userId') userId: string) {
-    return successResponse(this.usersService.getProfile(userId))
+  @Get("profile")
+  @ApiOperation({ summary: "Get my profile" })
+  getProfile(@Request() req: any) {
+    return successResponse(this.usersService.getProfile(req.user.userId));
   }
 
-  @Patch(':userId/profile')
-  @ApiOperation({ summary: 'Update user profile (firstName, lastName, phone, avatar)' })
-  @ApiParam({ name: 'userId' })
-  updateProfile(@Param('userId') userId: string, @Body() body: any) {
-    return successResponse(this.usersService.updateProfile(userId, body))
+  @Patch("profile")
+  @ApiOperation({
+    summary: "Update my profile (firstName, lastName, phone, avatar)",
+  })
+  updateProfile(@Request() req: any, @Body() body: any) {
+    return successResponse(
+      this.usersService.updateProfile(req.user.userId, body),
+    );
   }
 
-  @Get(':userId/addresses')
-  @ApiOperation({ summary: 'Get all saved addresses for user' })
-  @ApiParam({ name: 'userId' })
-  getAddresses(@Param('userId') userId: string) {
-    return successResponse(this.usersService.getAddresses(userId))
+  @Get("addresses")
+  @ApiOperation({ summary: "Get my addresses" })
+  getAddresses(@Request() req: any) {
+    return successResponse(this.usersService.getAddresses(req.user.userId));
   }
 
-  @Post(':userId/addresses')
-  @ApiOperation({ summary: 'Add a new address' })
-  @ApiParam({ name: 'userId' })
-  addAddress(@Param('userId') userId: string, @Body() body: any) {
-    return successResponse(this.usersService.addAddress(userId, body))
+  @Post("addresses")
+  @ApiOperation({ summary: "Add a new address" })
+  addAddress(@Request() req: any, @Body() body: any) {
+    return successResponse(this.usersService.addAddress(req.user.userId, body));
   }
 
-  @Patch(':userId/addresses/:addressId')
-  @ApiOperation({ summary: 'Update an existing address' })
-  @ApiParam({ name: 'userId' })
-  @ApiParam({ name: 'addressId' })
-  updateAddress(@Param('userId') userId: string, @Param('addressId') addressId: string, @Body() body: any) {
-    return successResponse(this.usersService.updateAddress(userId, addressId, body))
+  @Patch("addresses/:addressId")
+  @ApiOperation({ summary: "Update an address" })
+  updateAddress(
+    @Request() req: any,
+    @Param("addressId") addressId: string,
+    @Body() body: any,
+  ) {
+    return successResponse(
+      this.usersService.updateAddress(req.user.userId, addressId, body),
+    );
   }
 
-  @Delete(':userId/addresses/:addressId')
-  @ApiOperation({ summary: 'Delete an address' })
-  @ApiParam({ name: 'userId' })
-  @ApiParam({ name: 'addressId' })
-  deleteAddress(@Param('userId') userId: string, @Param('addressId') addressId: string) {
-    return successResponse(this.usersService.deleteAddress(userId, addressId))
+  @Delete("addresses/:addressId")
+  @ApiOperation({ summary: "Delete an address" })
+  deleteAddress(@Request() req: any, @Param("addressId") addressId: string) {
+    return successResponse(
+      this.usersService.deleteAddress(req.user.userId, addressId),
+    );
   }
 }

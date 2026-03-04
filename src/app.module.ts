@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ThrottlerModule } from "@nestjs/throttler";
+import { MongooseModule } from "@nestjs/mongoose";
 import { ProductsModule } from "./products/products.module";
 import { CategoriesModule } from "./categories/categories.module";
 import { CartModule } from "./cart/cart.module";
@@ -17,7 +18,17 @@ import { CategoryShowcaseModule } from "./category-showcase/category-showcase.mo
 
 @Module({
   imports: [
+    // ── MongoDB connection ─────────────────────────────────────────────────
+    MongooseModule.forRootAsync({
+      useFactory: () => ({
+        uri: process.env.MONGODB_URI,
+      }),
+    }),
+
+    // ── Rate limiting ──────────────────────────────────────────────────────
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+
+    // ── Feature modules ────────────────────────────────────────────────────
     ProductsModule,
     CategoriesModule,
     CartModule,

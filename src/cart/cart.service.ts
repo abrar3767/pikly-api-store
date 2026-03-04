@@ -3,8 +3,11 @@ import {
   BadRequestException,
   NotFoundException,
 } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
 import * as fs from "fs";
 import * as path from "path";
+import { Cart, CartDocument } from "../database/cart.schema";
 import {
   AddToCartDto,
   UpdateCartDto,
@@ -13,43 +16,12 @@ import {
   MergeCartDto,
 } from "./dto/cart.dto";
 
-export interface CartItem {
-  productId: string;
-  variantId: string | null;
-  title: string;
-  brand: string;
-  image: string;
-  slug: string;
-  price: number;
-  originalPrice: number;
-  quantity: number;
-  subtotal: number;
-  attributes: any;
-  stock: number;
-}
-
-export interface CartCoupon {
-  code: string;
-  type: string;
-  value: number;
-  discountValue: number;
-}
-
-export interface Cart {
-  sessionId: string;
-  userId: string | null;
-  items: CartItem[];
-  coupon: CartCoupon | null;
-  updatedAt: string;
-}
-
 @Injectable()
 export class CartService {
-  private carts = new Map<string, Cart>();
   private products: any[] = [];
   private coupons: any[] = [];
 
-  constructor() {
+  constructor(@InjectModel(Cart.name) private cartModel: Model<CartDocument>) {
     this.load();
   }
 
@@ -73,9 +45,10 @@ export class CartService {
     }
   }
 
-  private getOrCreate(sessionId: string): Cart {
-    if (!this.carts.has(sessionId)) {
-      this.carts.set(sessionId, {
+  private async getOrCreate(sessionId: string): Promise<CartDocument> {
+    let cart = await this.cartModel.findOne({ sessionId });
+    if (!cart) {
+      cart = await this.cartModel.create({
         sessionId,
         userId: null,
         items: [],
@@ -83,40 +56,42 @@ export class CartService {
         updatedAt: new Date().toISOString(),
       });
     }
-    return this.carts.get(sessionId)!;
+    return cart;
   }
 
-  private computeSummary(cart: Cart) {
+  private computeSummary(cart: CartDocument) {
+    const items = cart.items ?? [];
     const subtotal = parseFloat(
-      cart.items.reduce((s, i) => s + i.subtotal, 0).toFixed(2),
+      items.reduce((s: number, i: any) => s + i.subtotal, 0).toFixed(2),
     );
     const shipping = subtotal === 0 ? 0 : subtotal >= 50 ? 0 : 9.99;
     const tax = parseFloat((subtotal * 0.1).toFixed(2));
     let discount = 0;
 
-    if (cart.coupon) {
-      const c = cart.coupon;
-      if (c.type === "percentage")
+    const coupon = cart.coupon as any;
+    if (coupon) {
+      if (coupon.type === "percentage")
         discount = parseFloat(
-          Math.min((subtotal * c.value) / 100, 999).toFixed(2),
+          Math.min((subtotal * coupon.value) / 100, 999).toFixed(2),
         );
-      else if (c.type === "fixed") discount = Math.min(c.value, subtotal);
-      else if (c.type === "free_shipping") discount = shipping;
-      cart.coupon.discountValue = discount;
+      else if (coupon.type === "fixed")
+        discount = Math.min(coupon.value, subtotal);
+      else if (coupon.type === "free_shipping") discount = shipping;
+      coupon.discountValue = discount;
     }
 
     const total = parseFloat(
       Math.max(0, subtotal + shipping + tax - discount).toFixed(2),
     );
-    const savings = cart.items.reduce(
-      (s, i) => s + (i.originalPrice - i.price) * i.quantity,
+    const savings = items.reduce(
+      (s: number, i: any) => s + (i.originalPrice - i.price) * i.quantity,
       0,
     );
-    const itemCount = cart.items.reduce((s, i) => s + i.quantity, 0);
+    const itemCount = items.reduce((s: number, i: any) => s + i.quantity, 0);
 
     return {
-      items: cart.items,
-      coupon: cart.coupon,
+      items,
+      coupon,
       pricing: {
         subtotal,
         shipping,
@@ -131,20 +106,20 @@ export class CartService {
         savings: parseFloat(savings.toFixed(2)),
       },
       itemCount,
-      isEmpty: cart.items.length === 0,
+      isEmpty: items.length === 0,
       sessionId: cart.sessionId,
       userId: cart.userId,
       updatedAt: cart.updatedAt,
     };
   }
 
-  getCart(sessionId: string) {
-    const cart = this.getOrCreate(sessionId);
+  async getCart(sessionId: string) {
+    const cart = await this.getOrCreate(sessionId);
     return this.computeSummary(cart);
   }
 
-  addItem(dto: AddToCartDto) {
-    const cart = this.getOrCreate(dto.sessionId);
+  async addItem(dto: AddToCartDto) {
+    const cart = await this.getOrCreate(dto.sessionId);
     const product = this.products.find(
       (p) => p.id === dto.productId && p.isActive,
     );
@@ -164,8 +139,9 @@ export class CartService {
       (product.pricing.original + priceDiff).toFixed(2),
     );
 
-    const existing = cart.items.find(
-      (i) =>
+    const items = [...(cart.items ?? [])];
+    const existing = items.find(
+      (i: any) =>
         i.productId === dto.productId &&
         i.variantId === (dto.variantId ?? null),
     );
@@ -185,7 +161,7 @@ export class CartService {
           code: "INSUFFICIENT_STOCK",
           message: `Only ${stock} units available`,
         });
-      cart.items.push({
+      items.push({
         productId: product.id,
         variantId: dto.variantId ?? null,
         title: product.title,
@@ -201,15 +177,18 @@ export class CartService {
       });
     }
 
+    cart.items = items;
     if (dto.userId) cart.userId = dto.userId;
     cart.updatedAt = new Date().toISOString();
+    await cart.save();
     return this.computeSummary(cart);
   }
 
-  updateItem(dto: UpdateCartDto) {
-    const cart = this.getOrCreate(dto.sessionId);
-    const idx = cart.items.findIndex(
-      (i) =>
+  async updateItem(dto: UpdateCartDto) {
+    const cart = await this.getOrCreate(dto.sessionId);
+    const items = [...(cart.items ?? [])];
+    const idx = items.findIndex(
+      (i: any) =>
         i.productId === dto.productId &&
         i.variantId === (dto.variantId ?? null),
     );
@@ -220,9 +199,9 @@ export class CartService {
       });
 
     if (dto.quantity === 0) {
-      cart.items.splice(idx, 1);
+      items.splice(idx, 1);
     } else {
-      const item = cart.items[idx];
+      const item = items[idx];
       if (dto.quantity > item.stock)
         throw new BadRequestException({
           code: "INSUFFICIENT_STOCK",
@@ -232,15 +211,17 @@ export class CartService {
       item.subtotal = parseFloat((item.price * dto.quantity).toFixed(2));
     }
 
+    cart.items = items;
     cart.updatedAt = new Date().toISOString();
+    await cart.save();
     return this.computeSummary(cart);
   }
 
-  removeItem(dto: RemoveFromCartDto) {
-    const cart = this.getOrCreate(dto.sessionId);
-    const before = cart.items.length;
-    cart.items = cart.items.filter(
-      (i) =>
+  async removeItem(dto: RemoveFromCartDto) {
+    const cart = await this.getOrCreate(dto.sessionId);
+    const before = (cart.items ?? []).length;
+    cart.items = (cart.items ?? []).filter(
+      (i: any) =>
         !(
           i.productId === dto.productId &&
           i.variantId === (dto.variantId ?? null)
@@ -252,11 +233,12 @@ export class CartService {
         message: "Item not in cart",
       });
     cart.updatedAt = new Date().toISOString();
+    await cart.save();
     return this.computeSummary(cart);
   }
 
-  applyCoupon(dto: ApplyCouponDto) {
-    const cart = this.getOrCreate(dto.sessionId);
+  async applyCoupon(dto: ApplyCouponDto) {
+    const cart = await this.getOrCreate(dto.sessionId);
     const coupon = this.coupons.find(
       (c) => c.code.toUpperCase() === dto.code.toUpperCase() && c.isActive,
     );
@@ -278,7 +260,10 @@ export class CartService {
         message: "Coupon usage limit has been reached",
       });
 
-    const subtotal = cart.items.reduce((s, i) => s + i.subtotal, 0);
+    const subtotal = (cart.items ?? []).reduce(
+      (s: number, i: any) => s + i.subtotal,
+      0,
+    );
     if (subtotal < coupon.minOrderAmount) {
       throw new BadRequestException({
         code: "MIN_ORDER_NOT_MET",
@@ -287,7 +272,7 @@ export class CartService {
     }
 
     if (coupon.applicableCategories?.length > 0) {
-      const productIds = cart.items.map((i) => i.productId);
+      const productIds = (cart.items ?? []).map((i: any) => i.productId);
       const cartProducts = this.products.filter((p) =>
         productIds.includes(p.id),
       );
@@ -308,26 +293,32 @@ export class CartService {
       discountValue: 0,
     };
     cart.updatedAt = new Date().toISOString();
+    await cart.save();
     return this.computeSummary(cart);
   }
 
-  removeCoupon(sessionId: string) {
-    const cart = this.getOrCreate(sessionId);
+  async removeCoupon(sessionId: string) {
+    const cart = await this.getOrCreate(sessionId);
     cart.coupon = null;
     cart.updatedAt = new Date().toISOString();
+    await cart.save();
     return this.computeSummary(cart);
   }
 
-  mergeCart(dto: MergeCartDto) {
-    const guest = this.carts.get(dto.guestSessionId);
-    if (!guest || guest.items.length === 0) return this.getCart(dto.userId);
+  async mergeCart(dto: MergeCartDto) {
+    const guest = await this.cartModel.findOne({
+      sessionId: dto.guestSessionId,
+    });
+    if (!guest || (guest.items ?? []).length === 0)
+      return this.getCart(dto.userId);
 
-    const userCart = this.getOrCreate(dto.userId);
+    const userCart = await this.getOrCreate(dto.userId);
     userCart.userId = dto.userId;
+    const userItems = [...(userCart.items ?? [])];
 
-    for (const gItem of guest.items) {
-      const existing = userCart.items.find(
-        (i) =>
+    for (const gItem of (guest.items ?? []) as any[]) {
+      const existing = userItems.find(
+        (i: any) =>
           i.productId === gItem.productId && i.variantId === gItem.variantId,
       );
       if (existing) {
@@ -339,17 +330,19 @@ export class CartService {
           (existing.price * existing.quantity).toFixed(2),
         );
       } else {
-        userCart.items.push({ ...gItem });
+        userItems.push({ ...gItem });
       }
     }
 
-    this.carts.delete(dto.guestSessionId);
+    userCart.items = userItems;
     userCart.updatedAt = new Date().toISOString();
+    await userCart.save();
+    await this.cartModel.deleteOne({ sessionId: dto.guestSessionId });
     return this.computeSummary(userCart);
   }
 
-  getSummary(sessionId: string) {
-    const cart = this.getOrCreate(sessionId);
+  async getSummary(sessionId: string) {
+    const cart = await this.getOrCreate(sessionId);
     const s = this.computeSummary(cart);
     return {
       itemCount: s.itemCount,
@@ -357,14 +350,15 @@ export class CartService {
       subtotal: s.pricing.subtotal,
       isEmpty: s.isEmpty,
       hasCoupon: !!cart.coupon,
-      couponCode: cart.coupon?.code ?? null,
+      couponCode: (cart.coupon as any)?.code ?? null,
     };
   }
 
-  clearCart(sessionId: string) {
-    const cart = this.getOrCreate(sessionId);
+  async clearCart(sessionId: string) {
+    const cart = await this.getOrCreate(sessionId);
     cart.items = [];
     cart.coupon = null;
     cart.updatedAt = new Date().toISOString();
+    await cart.save();
   }
 }

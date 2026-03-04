@@ -3,68 +3,57 @@ import {
   BadRequestException,
   NotFoundException,
 } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
 import * as fs from "fs";
 import * as path from "path";
+import { Order, OrderDocument } from "../database/order.schema";
+import { User, UserDocument } from "../database/user.schema";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { CartService } from "../cart/cart.service";
 import { smartPaginate } from "../common/api-utils";
 
 @Injectable()
 export class OrdersService {
-  private orders: any[] = [];
   private products: any[] = [];
-  private users: any[] = [];
-  private coupons: any[] = [];
   private counter = 1000;
 
-  constructor(private readonly cartService: CartService) {
+  constructor(
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private readonly cartService: CartService,
+  ) {
     this.load();
+    this.initCounter();
   }
 
   private load() {
     try {
-      this.orders = JSON.parse(
-        fs.readFileSync(
-          path.join(process.cwd(), "data", "orders.json"),
-          "utf-8",
-        ),
-      );
       this.products = JSON.parse(
         fs.readFileSync(
           path.join(process.cwd(), "data", "products.json"),
           "utf-8",
         ),
       );
-      this.users = JSON.parse(
-        fs.readFileSync(
-          path.join(process.cwd(), "data", "users.json"),
-          "utf-8",
-        ),
-      );
-      this.coupons = JSON.parse(
-        fs.readFileSync(
-          path.join(process.cwd(), "data", "coupons.json"),
-          "utf-8",
-        ),
-      );
-      this.counter = this.orders.length + 1000;
     } catch {
-      this.orders = [];
       this.products = [];
-      this.users = [];
-      this.coupons = [];
     }
   }
 
-  createOrder(dto: CreateOrderDto) {
-    const cart = this.cartService.getCart(dto.sessionId);
+  private async initCounter() {
+    const count = await this.orderModel.countDocuments();
+    this.counter = count + 1000;
+  }
+
+  async createOrder(dto: CreateOrderDto) {
+    const cart = await this.cartService.getCart(dto.sessionId);
     if (cart.isEmpty)
       throw new BadRequestException({
         code: "EMPTY_CART",
         message: "Cart is empty",
       });
 
-    const user = this.users.find((u) => u.id === dto.userId);
+    const user = await this.userModel.findById(dto.userId);
     if (!user)
       throw new NotFoundException({
         code: "USER_NOT_FOUND",
@@ -78,8 +67,8 @@ export class OrdersService {
         message: "Address not found",
       });
 
-    // Validate stock for each item
-    for (const item of cart.items) {
+    // Validate stock
+    for (const item of cart.items as any[]) {
       const product = this.products.find((p) => p.id === item.productId);
       if (!product)
         throw new NotFoundException({
@@ -97,8 +86,8 @@ export class OrdersService {
     const orderId = `ORD-2025-${String(++this.counter).padStart(5, "0")}`;
     const now = new Date().toISOString();
 
-    const order = {
-      id: orderId,
+    const order = await this.orderModel.create({
+      orderId,
       userId: dto.userId,
       status: "confirmed",
       items: cart.items,
@@ -117,17 +106,13 @@ export class OrdersService {
       ],
       trackingNumber: null,
       estimatedDelivery: new Date(Date.now() + 5 * 86400000).toISOString(),
-      createdAt: now,
-      updatedAt: now,
-    };
+    });
 
-    this.orders.push(order);
-    this.cartService.clearCart(dto.sessionId);
+    await this.cartService.clearCart(dto.sessionId);
     return order;
   }
 
-  // ── GET /orders — supports both offset (page) and cursor pagination ────────
-  getUserOrders(
+  async getUserOrders(
     userId: string,
     query: {
       page?: number;
@@ -136,12 +121,13 @@ export class OrdersService {
       status?: string;
     },
   ) {
-    let orders = this.orders.filter((o) => o.userId === userId);
-    if (query.status) orders = orders.filter((o) => o.status === query.status);
-    orders.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    const filter: any = { userId };
+    if (query.status) filter.status = query.status;
+
+    const orders = await this.orderModel
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
 
     const paginated = smartPaginate(orders, {
       page: query.page,
@@ -157,13 +143,11 @@ export class OrdersService {
         hasNextPage: paginated.hasNextPage,
         hasPrevPage: paginated.hasPrevPage,
         mode: paginated.mode,
-        // offset mode fields
-        ...(paginated.mode === "offset" && {
+        ...((paginated as any).mode === "offset" && {
           page: (paginated as any).page,
           totalPages: (paginated as any).totalPages,
         }),
-        // cursor mode fields
-        ...(paginated.mode === "cursor" && {
+        ...((paginated as any).mode === "cursor" && {
           nextCursor: (paginated as any).nextCursor,
           prevCursor: (paginated as any).prevCursor,
         }),
@@ -171,8 +155,8 @@ export class OrdersService {
     };
   }
 
-  getOrder(orderId: string) {
-    const order = this.orders.find((o) => o.id === orderId);
+  async getOrder(orderId: string) {
+    const order = await this.orderModel.findOne({ orderId });
     if (!order)
       throw new NotFoundException({
         code: "ORDER_NOT_FOUND",
@@ -181,8 +165,8 @@ export class OrdersService {
     return order;
   }
 
-  cancelOrder(orderId: string) {
-    const order = this.orders.find((o) => o.id === orderId);
+  async cancelOrder(orderId: string) {
+    const order = await this.orderModel.findOne({ orderId });
     if (!order)
       throw new NotFoundException({
         code: "ORDER_NOT_FOUND",
@@ -194,26 +178,27 @@ export class OrdersService {
         message: `Orders with status "${order.status}" cannot be cancelled`,
       });
     }
+    const now = new Date().toISOString();
     order.status = "cancelled";
     order.paymentStatus = "refunded";
-    order.updatedAt = new Date().toISOString();
     order.timeline.push({
       status: "cancelled",
-      timestamp: new Date().toISOString(),
+      timestamp: now,
       message: "Order cancelled by customer",
     });
+    await order.save();
     return order;
   }
 
-  trackOrder(orderId: string) {
-    const order = this.orders.find((o) => o.id === orderId);
+  async trackOrder(orderId: string) {
+    const order = await this.orderModel.findOne({ orderId });
     if (!order)
       throw new NotFoundException({
         code: "ORDER_NOT_FOUND",
         message: `Order ${orderId} not found`,
       });
     return {
-      orderId: order.id,
+      orderId: order.orderId,
       status: order.status,
       timeline: order.timeline,
       trackingNumber: order.trackingNumber,

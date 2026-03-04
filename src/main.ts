@@ -1,4 +1,12 @@
+// ── Fix: Node.js v22+ Windows DNS SRV resolution bug ──────────────────────
+import { setServers } from "node:dns/promises";
+setServers(["8.8.8.8", "8.8.4.4"]);
+// ──────────────────────────────────────────────────────────────────────────
+
 import "reflect-metadata";
+import * as dotenv from "dotenv";
+dotenv.config();
+
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";

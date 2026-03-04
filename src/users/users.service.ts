@@ -1,88 +1,117 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
-import * as fs   from 'fs'
-import * as path from 'path'
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { User, UserDocument } from "../database/user.schema";
 
 @Injectable()
 export class UsersService {
-  private users: any[] = []
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
-  constructor() { this.load() }
-
-  private load() {
-    try {
-      this.users = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'data', 'users.json'), 'utf-8'))
-    } catch { this.users = [] }
-  }
-
-  private findUser(userId: string) {
-    const user = this.users.find(u => u.id === userId)
-    if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'User not found' })
-    return user
+  private async findUser(userId: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user)
+      throw new NotFoundException({
+        code: "USER_NOT_FOUND",
+        message: "User not found",
+      });
+    return user;
   }
 
   private safe(user: any) {
-    const { passwordHash, ...rest } = user
-    return rest
+    const obj = user.toObject ? user.toObject() : user;
+    const { passwordHash, ...rest } = obj;
+    return { ...rest, id: obj._id?.toString() };
   }
 
-  getProfile(userId: string) {
-    return this.safe(this.findUser(userId))
+  async getProfile(userId: string) {
+    const user = await this.findUser(userId);
+    return this.safe(user);
   }
 
-  updateProfile(userId: string, body: any) {
-    const user   = this.findUser(userId)
-    const allowed = ['firstName', 'lastName', 'phone', 'avatar']
+  async updateProfile(userId: string, body: any) {
+    const allowed = ["firstName", "lastName", "phone", "avatar"];
+    const update: any = {};
     for (const key of allowed) {
-      if (body[key] !== undefined) user[key] = body[key]
+      if (body[key] !== undefined) update[key] = body[key];
     }
-    user.updatedAt = new Date().toISOString()
-    return this.safe(user)
+    const user = await this.userModel.findByIdAndUpdate(userId, update, {
+      new: true,
+    });
+    if (!user)
+      throw new NotFoundException({
+        code: "USER_NOT_FOUND",
+        message: "User not found",
+      });
+    return this.safe(user);
   }
 
-  getAddresses(userId: string) {
-    const user = this.findUser(userId)
-    return { addresses: user.addresses ?? [], userId }
+  async getAddresses(userId: string) {
+    const user = await this.findUser(userId);
+    return { addresses: user.addresses ?? [], userId };
   }
 
-  addAddress(userId: string, body: any) {
-    const user = this.findUser(userId)
-    if (!user.addresses) user.addresses = []
+  async addAddress(userId: string, body: any) {
+    const user = await this.findUser(userId);
     const addr = {
-      id:        `addr_${userId}_${Date.now()}`,
-      label:     body.label     ?? 'Home',
-      street:    body.street,
-      city:      body.city,
-      state:     body.state,
-      zip:       body.zip,
-      country:   body.country   ?? 'USA',
+      id: `addr_${userId}_${Date.now()}`,
+      label: body.label ?? "Home",
+      street: body.street,
+      city: body.city,
+      state: body.state,
+      zip: body.zip,
+      country: body.country ?? "USA",
       isDefault: body.isDefault ?? false,
-    }
-    if (addr.isDefault) {
-      user.addresses.forEach((a: any) => (a.isDefault = false))
-    }
-    user.addresses.push(addr)
-    return addr
+    };
+    const addresses = user.addresses ?? [];
+    if (addr.isDefault) addresses.forEach((a: any) => (a.isDefault = false));
+    addresses.push(addr);
+    await this.userModel.findByIdAndUpdate(userId, { addresses });
+    return addr;
   }
 
-  updateAddress(userId: string, addressId: string, body: any) {
-    const user = this.findUser(userId)
-    const addr = user.addresses?.find((a: any) => a.id === addressId)
-    if (!addr) throw new NotFoundException({ code: 'ADDRESS_NOT_FOUND', message: 'Address not found' })
-    const fields = ['label','street','city','state','zip','country','isDefault']
+  async updateAddress(userId: string, addressId: string, body: any) {
+    const user = await this.findUser(userId);
+    const addresses = user.addresses ?? [];
+    const idx = addresses.findIndex((a: any) => a.id === addressId);
+    if (idx === -1)
+      throw new NotFoundException({
+        code: "ADDRESS_NOT_FOUND",
+        message: "Address not found",
+      });
+
+    const fields = [
+      "label",
+      "street",
+      "city",
+      "state",
+      "zip",
+      "country",
+      "isDefault",
+    ];
     for (const f of fields) {
-      if (body[f] !== undefined) addr[f] = body[f]
+      if (body[f] !== undefined) addresses[idx][f] = body[f];
     }
     if (body.isDefault) {
-      user.addresses.forEach((a: any) => { if (a.id !== addressId) a.isDefault = false })
+      addresses.forEach((a: any) => {
+        if (a.id !== addressId) a.isDefault = false;
+      });
     }
-    return addr
+    await this.userModel.findByIdAndUpdate(userId, { addresses });
+    return addresses[idx];
   }
 
-  deleteAddress(userId: string, addressId: string) {
-    const user = this.findUser(userId)
-    const before = (user.addresses ?? []).length
-    user.addresses = (user.addresses ?? []).filter((a: any) => a.id !== addressId)
-    if (user.addresses.length === before) throw new NotFoundException({ code: 'ADDRESS_NOT_FOUND', message: 'Address not found' })
-    return { deleted: true, addressId }
+  async deleteAddress(userId: string, addressId: string) {
+    const user = await this.findUser(userId);
+    const before = (user.addresses ?? []).length;
+    const updated = (user.addresses ?? []).filter(
+      (a: any) => a.id !== addressId,
+    );
+    if (updated.length === before)
+      throw new NotFoundException({
+        code: "ADDRESS_NOT_FOUND",
+        message: "Address not found",
+      });
+    await this.userModel.findByIdAndUpdate(userId, { addresses: updated });
+    return { deleted: true, addressId };
   }
 }
