@@ -1,0 +1,563 @@
+[
+  {
+    "id": "cat_001",
+    "name": "Electronics",
+    "slug": "electronics",
+    "parentId": null,
+    "level": 0,
+    "image": "https://api.unsplash.com/photos/random?query=electronics&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Zap",
+    "description": "Latest gadgets, laptops, phones and audio devices.",
+    "productCount": 33,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 1,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price Range",
+        "type": "range"
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating"
+      }
+    ]
+  },
+  {
+    "id": "cat_002",
+    "name": "Laptops",
+    "slug": "laptops",
+    "parentId": "cat_001",
+    "level": 1,
+    "image": "https://api.unsplash.com/photos/random?query=laptop&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Laptop",
+    "description": "Gaming laptops, ultrabooks and business laptops.",
+    "productCount": 11,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 1,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "ram",
+        "label": "RAM",
+        "type": "checkbox"
+      },
+      {
+        "key": "storage",
+        "label": "Storage",
+        "type": "checkbox"
+      },
+      {
+        "key": "processor",
+        "label": "Processor",
+        "type": "checkbox"
+      },
+      {
+        "key": "gpu",
+        "label": "GPU",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_003",
+    "name": "Gaming Laptops",
+    "slug": "gaming-laptops",
+    "parentId": "cat_002",
+    "level": 2,
+    "image": "https://api.unsplash.com/photos/random?query=gaming-laptop&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Gamepad2",
+    "description": "High performance gaming laptops with latest GPUs.",
+    "productCount": 6,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 1,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "gpu",
+        "label": "GPU",
+        "type": "checkbox"
+      },
+      {
+        "key": "ram",
+        "label": "RAM",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_004",
+    "name": "Ultrabooks",
+    "slug": "ultrabooks",
+    "parentId": "cat_002",
+    "level": 2,
+    "image": "https://api.unsplash.com/photos/random?query=ultrabook&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Laptop",
+    "description": "Ultra-thin, lightweight laptops for professionals.",
+    "productCount": 5,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 2,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "ram",
+        "label": "RAM",
+        "type": "checkbox"
+      },
+      {
+        "key": "batteryLife",
+        "label": "Battery Life",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_005",
+    "name": "Smartphones",
+    "slug": "smartphones",
+    "parentId": "cat_001",
+    "level": 1,
+    "image": "https://api.unsplash.com/photos/random?query=smartphone&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Smartphone",
+    "description": "Android phones, iPhones and flagship devices.",
+    "productCount": 12,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 2,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "ram",
+        "label": "RAM",
+        "type": "checkbox"
+      },
+      {
+        "key": "storage",
+        "label": "Storage",
+        "type": "checkbox"
+      },
+      {
+        "key": "camera",
+        "label": "Camera",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_006",
+    "name": "Android",
+    "slug": "android",
+    "parentId": "cat_005",
+    "level": 2,
+    "image": "https://api.unsplash.com/photos/random?query=android-phone&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Smartphone",
+    "description": "Latest Android flagship and mid-range phones.",
+    "productCount": 8,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 1,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "ram",
+        "label": "RAM",
+        "type": "checkbox"
+      },
+      {
+        "key": "storage",
+        "label": "Storage",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_007",
+    "name": "iPhone",
+    "slug": "iphone",
+    "parentId": "cat_005",
+    "level": 2,
+    "image": "https://api.unsplash.com/photos/random?query=iphone&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Smartphone",
+    "description": "Apple iPhone 16 series and previous models.",
+    "productCount": 4,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 2,
+    "filters": [
+      {
+        "key": "storage",
+        "label": "Storage",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_008",
+    "name": "Audio",
+    "slug": "audio",
+    "parentId": "cat_001",
+    "level": 1,
+    "image": "https://api.unsplash.com/photos/random?query=audio-headphones&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Headphones",
+    "description": "Headphones, earbuds and speakers.",
+    "productCount": 10,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 3,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "connectivity",
+        "label": "Connectivity",
+        "type": "checkbox"
+      },
+      {
+        "key": "noiseCancellation",
+        "label": "ANC",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_009",
+    "name": "Fashion",
+    "slug": "fashion",
+    "parentId": null,
+    "level": 0,
+    "image": "https://api.unsplash.com/photos/random?query=mens-fashion&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Shirt",
+    "description": "Trendy clothing, shoes and accessories for men.",
+    "productCount": 37,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 2,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating"
+      }
+    ]
+  },
+  {
+    "id": "cat_010",
+    "name": "Mens Clothing",
+    "slug": "mens-clothing",
+    "parentId": "cat_009",
+    "level": 1,
+    "image": "https://api.unsplash.com/photos/random?query=mens-clothing&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Shirt",
+    "description": "Shirts, pants, jackets and more for men.",
+    "productCount": 15,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 1,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "sizes",
+        "label": "Size",
+        "type": "checkbox"
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox"
+      },
+      {
+        "key": "fabric",
+        "label": "Fabric",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_011",
+    "name": "Shoes",
+    "slug": "shoes",
+    "parentId": "cat_009",
+    "level": 1,
+    "image": "https://api.unsplash.com/photos/random?query=mens-shoes&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Footprints",
+    "description": "Formal, casual and sports shoes for men.",
+    "productCount": 12,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 2,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "sizes",
+        "label": "Size",
+        "type": "checkbox"
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox"
+      },
+      {
+        "key": "material",
+        "label": "Material",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_012",
+    "name": "Home & Kitchen",
+    "slug": "home-kitchen",
+    "parentId": null,
+    "level": 0,
+    "image": "https://api.unsplash.com/photos/random?query=kitchen&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "UtensilsCrossed",
+    "description": "Kitchen appliances and home essentials.",
+    "productCount": 10,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 3,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating"
+      }
+    ]
+  },
+  {
+    "id": "cat_013",
+    "name": "Beauty",
+    "slug": "beauty",
+    "parentId": null,
+    "level": 0,
+    "image": "https://api.unsplash.com/photos/random?query=beauty-cosmetics&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Sparkles",
+    "description": "Skincare, makeup and beauty products.",
+    "productCount": 10,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 4,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "skinType",
+        "label": "Skin Type",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_014",
+    "name": "Sports & Fitness",
+    "slug": "sports-fitness",
+    "parentId": null,
+    "level": 0,
+    "image": "https://api.unsplash.com/photos/random?query=fitness-gym&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Dumbbell",
+    "description": "Gym equipment, sports gear and fitness accessories.",
+    "productCount": 10,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 5,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "targetMuscle",
+        "label": "Target Muscle",
+        "type": "checkbox"
+      },
+      {
+        "key": "difficulty",
+        "label": "Difficulty",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_015",
+    "name": "Books",
+    "slug": "books",
+    "parentId": null,
+    "level": 0,
+    "image": "https://api.unsplash.com/photos/random?query=books&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "BookOpen",
+    "description": "Tech books, self-help, fiction and more.",
+    "productCount": 8,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 6,
+    "filters": [
+      {
+        "key": "author",
+        "label": "Author",
+        "type": "checkbox"
+      },
+      {
+        "key": "format",
+        "label": "Format",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  },
+  {
+    "id": "cat_016",
+    "name": "Accessories",
+    "slug": "accessories",
+    "parentId": null,
+    "level": 0,
+    "image": "https://api.unsplash.com/photos/random?query=fashion-accessories&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "icon": "Watch",
+    "description": "Bags, watches and fashion accessories.",
+    "productCount": 8,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 7,
+    "filters": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox"
+      },
+      {
+        "key": "material",
+        "label": "Material",
+        "type": "checkbox"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "range"
+      }
+    ]
+  }
+]

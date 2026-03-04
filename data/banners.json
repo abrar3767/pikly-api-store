@@ -1,0 +1,80 @@
+[
+  {
+    "id": "ban_001",
+    "title": "Summer Tech Sale — Up to 40% Off",
+    "subtitle": "Shop the best deals on laptops, phones and audio",
+    "image": "https://api.unsplash.com/photos/random?query=technology-sale&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "ctaText": "Shop Now",
+    "ctaLink": "/products?onSale=true&category=electronics",
+    "position": "hero",
+    "startDate": "2025-01-01T00:00:00Z",
+    "endDate": "2025-12-31T23:59:59Z",
+    "isActive": true,
+    "sortOrder": 1
+  },
+  {
+    "id": "ban_002",
+    "title": "New iPhone 16 Series — Available Now",
+    "subtitle": "Experience the future of smartphones",
+    "image": "https://api.unsplash.com/photos/random?query=iphone-16&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "ctaText": "Explore",
+    "ctaLink": "/products?subcategory=iphone",
+    "position": "hero",
+    "startDate": "2025-01-01T00:00:00Z",
+    "endDate": "2025-12-31T23:59:59Z",
+    "isActive": true,
+    "sortOrder": 2
+  },
+  {
+    "id": "ban_003",
+    "title": "Fashion Week Sale — 25% Off All Clothing",
+    "subtitle": "Refresh your wardrobe with premium brands",
+    "image": "https://api.unsplash.com/photos/random?query=fashion-sale&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "ctaText": "Shop Fashion",
+    "ctaLink": "/products?category=fashion&onSale=true",
+    "position": "hero",
+    "startDate": "2025-01-01T00:00:00Z",
+    "endDate": "2025-12-31T23:59:59Z",
+    "isActive": true,
+    "sortOrder": 3
+  },
+  {
+    "id": "ban_004",
+    "title": "Free Shipping on Orders Over $50",
+    "subtitle": "Use code FREESHIP at checkout",
+    "image": "https://api.unsplash.com/photos/random?query=shipping-delivery&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "ctaText": "Shop All",
+    "ctaLink": "/products",
+    "position": "sidebar",
+    "startDate": "2025-01-01T00:00:00Z",
+    "endDate": "2025-12-31T23:59:59Z",
+    "isActive": true,
+    "sortOrder": 1
+  },
+  {
+    "id": "ban_005",
+    "title": "Gaming Setup Week — Massive Discounts",
+    "subtitle": "Build your dream gaming station",
+    "image": "https://api.unsplash.com/photos/random?query=gaming-setup&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "ctaText": "View Deals",
+    "ctaLink": "/products?subSubcategory=gaming-laptops&onSale=true",
+    "position": "category_top",
+    "startDate": "2025-01-01T00:00:00Z",
+    "endDate": "2025-12-31T23:59:59Z",
+    "isActive": true,
+    "sortOrder": 1
+  },
+  {
+    "id": "ban_006",
+    "title": "Beauty & Skincare — New Arrivals",
+    "subtitle": "Discover the latest in skincare and makeup",
+    "image": "https://api.unsplash.com/photos/random?query=beauty-skincare&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "ctaText": "Discover",
+    "ctaLink": "/products?category=beauty&newArrival=true",
+    "position": "category_top",
+    "startDate": "2025-01-01T00:00:00Z",
+    "endDate": "2025-12-31T23:59:59Z",
+    "isActive": true,
+    "sortOrder": 2
+  }
+]

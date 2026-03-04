@@ -1,0 +1,282 @@
+[
+  {
+    "id": "usr_001",
+    "email": "james.smith@example.com",
+    "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
+    "firstName": "James",
+    "lastName": "Smith",
+    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-1&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "phone": "+1-555-7780",
+    "role": "admin",
+    "addresses": [
+      {
+        "id": "addr_001_01",
+        "label": "Home",
+        "street": "9191 N 8th Street",
+        "city": "Fort Oswaldoshire",
+        "state": "CA",
+        "zip": "84559-8750",
+        "country": "USA",
+        "isDefault": true
+      }
+    ],
+    "wishlist": [],
+    "loyaltyPoints": 511,
+    "memberSince": "2023-02-04T13:19:20.069Z",
+    "lastLogin": "2025-01-22T04:19:16.501Z",
+    "isVerified": true,
+    "isActive": true
+  },
+  {
+    "id": "usr_002",
+    "email": "emma.johnson@example.com",
+    "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
+    "firstName": "Emma",
+    "lastName": "Johnson",
+    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-2&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "phone": "+1-555-7719",
+    "role": "customer",
+    "addresses": [
+      {
+        "id": "addr_002_01",
+        "label": "Home",
+        "street": "27288 Lincoln Highway",
+        "city": "Billings",
+        "state": "DE",
+        "zip": "04916",
+        "country": "USA",
+        "isDefault": true
+      }
+    ],
+    "wishlist": [],
+    "loyaltyPoints": 1972,
+    "memberSince": "2022-08-09T00:03:38.181Z",
+    "lastLogin": "2025-01-07T23:32:17.432Z",
+    "isVerified": true,
+    "isActive": true
+  },
+  {
+    "id": "usr_003",
+    "email": "liam.williams@example.com",
+    "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
+    "firstName": "Liam",
+    "lastName": "Williams",
+    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-3&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "phone": "+1-555-6790",
+    "role": "customer",
+    "addresses": [
+      {
+        "id": "addr_003_01",
+        "label": "Home",
+        "street": "3906 Caden Pines",
+        "city": "St. Petersburg",
+        "state": "FL",
+        "zip": "02494",
+        "country": "USA",
+        "isDefault": true
+      }
+    ],
+    "wishlist": [],
+    "loyaltyPoints": 881,
+    "memberSince": "2023-05-04T22:57:27.685Z",
+    "lastLogin": "2025-01-03T03:05:55.322Z",
+    "isVerified": true,
+    "isActive": true
+  },
+  {
+    "id": "usr_004",
+    "email": "olivia.brown@example.com",
+    "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
+    "firstName": "Olivia",
+    "lastName": "Brown",
+    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-4&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "phone": "+1-555-4474",
+    "role": "customer",
+    "addresses": [
+      {
+        "id": "addr_004_01",
+        "label": "Home",
+        "street": "4020 Jodie Spring",
+        "city": "San Antonio",
+        "state": "MN",
+        "zip": "27590-8788",
+        "country": "USA",
+        "isDefault": true
+      }
+    ],
+    "wishlist": [],
+    "loyaltyPoints": 49,
+    "memberSince": "2022-06-20T18:07:38.776Z",
+    "lastLogin": "2025-01-14T11:36:14.963Z",
+    "isVerified": true,
+    "isActive": true
+  },
+  {
+    "id": "usr_005",
+    "email": "noah.jones@example.com",
+    "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
+    "firstName": "Noah",
+    "lastName": "Jones",
+    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-5&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "phone": "+1-555-1507",
+    "role": "customer",
+    "addresses": [
+      {
+        "id": "addr_005_01",
+        "label": "Home",
+        "street": "1464 Colby Bridge",
+        "city": "Garnettboro",
+        "state": "NY",
+        "zip": "85913-1560",
+        "country": "USA",
+        "isDefault": true
+      }
+    ],
+    "wishlist": [],
+    "loyaltyPoints": 691,
+    "memberSince": "2022-01-27T00:14:26.920Z",
+    "lastLogin": "2025-01-11T20:48:32.989Z",
+    "isVerified": true,
+    "isActive": true
+  },
+  {
+    "id": "usr_006",
+    "email": "ava.garcia@example.com",
+    "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
+    "firstName": "Ava",
+    "lastName": "Garcia",
+    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-6&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "phone": "+1-555-2885",
+    "role": "customer",
+    "addresses": [
+      {
+        "id": "addr_006_01",
+        "label": "Home",
+        "street": "44461 O'Keefe Drive",
+        "city": "Fort Teresa",
+        "state": "CO",
+        "zip": "17246-6630",
+        "country": "USA",
+        "isDefault": true
+      }
+    ],
+    "wishlist": [],
+    "loyaltyPoints": 431,
+    "memberSince": "2022-09-17T22:24:04.010Z",
+    "lastLogin": "2025-01-26T00:19:57.781Z",
+    "isVerified": true,
+    "isActive": true
+  },
+  {
+    "id": "usr_007",
+    "email": "william.miller@example.com",
+    "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
+    "firstName": "William",
+    "lastName": "Miller",
+    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-7&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "phone": "+1-555-9873",
+    "role": "customer",
+    "addresses": [
+      {
+        "id": "addr_007_01",
+        "label": "Home",
+        "street": "76818 Aaron Place",
+        "city": "Buckstad",
+        "state": "NV",
+        "zip": "35276",
+        "country": "USA",
+        "isDefault": true
+      }
+    ],
+    "wishlist": [],
+    "loyaltyPoints": 744,
+    "memberSince": "2022-01-11T02:41:31.010Z",
+    "lastLogin": "2025-01-20T23:51:57.929Z",
+    "isVerified": true,
+    "isActive": true
+  },
+  {
+    "id": "usr_008",
+    "email": "sophia.davis@example.com",
+    "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
+    "firstName": "Sophia",
+    "lastName": "Davis",
+    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-8&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "phone": "+1-555-9786",
+    "role": "customer",
+    "addresses": [
+      {
+        "id": "addr_008_01",
+        "label": "Home",
+        "street": "1604 Willms Streets",
+        "city": "Ortizburgh",
+        "state": "RI",
+        "zip": "43246",
+        "country": "USA",
+        "isDefault": true
+      }
+    ],
+    "wishlist": [],
+    "loyaltyPoints": 763,
+    "memberSince": "2022-07-28T07:50:18.664Z",
+    "lastLogin": "2025-01-15T02:35:04.706Z",
+    "isVerified": true,
+    "isActive": true
+  },
+  {
+    "id": "usr_009",
+    "email": "benjamin.wilson@example.com",
+    "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
+    "firstName": "Benjamin",
+    "lastName": "Wilson",
+    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-9&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "phone": "+1-555-5358",
+    "role": "customer",
+    "addresses": [
+      {
+        "id": "addr_009_01",
+        "label": "Home",
+        "street": "8934 Ortiz Fall",
+        "city": "Amaniview",
+        "state": "UT",
+        "zip": "92395-0119",
+        "country": "USA",
+        "isDefault": true
+      }
+    ],
+    "wishlist": [],
+    "loyaltyPoints": 159,
+    "memberSince": "2022-09-06T10:56:33.378Z",
+    "lastLogin": "2025-01-03T08:18:46.843Z",
+    "isVerified": true,
+    "isActive": true
+  },
+  {
+    "id": "usr_010",
+    "email": "isabella.moore@example.com",
+    "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
+    "firstName": "Isabella",
+    "lastName": "Moore",
+    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-10&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "phone": "+1-555-7566",
+    "role": "customer",
+    "addresses": [
+      {
+        "id": "addr_010_01",
+        "label": "Home",
+        "street": "614 Micaela Turnpike",
+        "city": "North Kallie",
+        "state": "NE",
+        "zip": "06669",
+        "country": "USA",
+        "isDefault": true
+      }
+    ],
+    "wishlist": [],
+    "loyaltyPoints": 1221,
+    "memberSince": "2023-08-14T23:09:48.664Z",
+    "lastLogin": "2025-01-20T17:54:29.106Z",
+    "isVerified": true,
+    "isActive": true
+  }
+]

@@ -1,0 +1,118 @@
+[
+  {
+    "id": "coup_001",
+    "code": "SAVE10",
+    "type": "percentage",
+    "value": 10,
+    "minOrderAmount": 50,
+    "maxDiscount": 30,
+    "usageLimit": 500,
+    "usedCount": 234,
+    "applicableCategories": [],
+    "applicableProducts": [],
+    "expiresAt": "2025-12-31T23:59:59Z",
+    "isActive": true
+  },
+  {
+    "id": "coup_002",
+    "code": "SAVE20",
+    "type": "percentage",
+    "value": 20,
+    "minOrderAmount": 100,
+    "maxDiscount": 50,
+    "usageLimit": 200,
+    "usedCount": 89,
+    "applicableCategories": [],
+    "applicableProducts": [],
+    "expiresAt": "2025-12-31T23:59:59Z",
+    "isActive": true
+  },
+  {
+    "id": "coup_003",
+    "code": "SAVE50",
+    "type": "fixed",
+    "value": 50,
+    "minOrderAmount": 200,
+    "maxDiscount": 50,
+    "usageLimit": 100,
+    "usedCount": 45,
+    "applicableCategories": [],
+    "applicableProducts": [],
+    "expiresAt": "2025-06-30T23:59:59Z",
+    "isActive": true
+  },
+  {
+    "id": "coup_004",
+    "code": "FREESHIP",
+    "type": "free_shipping",
+    "value": 0,
+    "minOrderAmount": 30,
+    "maxDiscount": 20,
+    "usageLimit": 1000,
+    "usedCount": 456,
+    "applicableCategories": [],
+    "applicableProducts": [],
+    "expiresAt": "2025-12-31T23:59:59Z",
+    "isActive": true
+  },
+  {
+    "id": "coup_005",
+    "code": "TECH15",
+    "type": "percentage",
+    "value": 15,
+    "minOrderAmount": 150,
+    "maxDiscount": 100,
+    "usageLimit": 150,
+    "usedCount": 67,
+    "applicableCategories": [
+      "electronics"
+    ],
+    "applicableProducts": [],
+    "expiresAt": "2025-09-30T23:59:59Z",
+    "isActive": true
+  },
+  {
+    "id": "coup_006",
+    "code": "FASHION25",
+    "type": "percentage",
+    "value": 25,
+    "minOrderAmount": 80,
+    "maxDiscount": 60,
+    "usageLimit": 200,
+    "usedCount": 112,
+    "applicableCategories": [
+      "fashion"
+    ],
+    "applicableProducts": [],
+    "expiresAt": "2025-08-31T23:59:59Z",
+    "isActive": true
+  },
+  {
+    "id": "coup_007",
+    "code": "NEWUSER30",
+    "type": "percentage",
+    "value": 30,
+    "minOrderAmount": 50,
+    "maxDiscount": 40,
+    "usageLimit": 50,
+    "usedCount": 0,
+    "applicableCategories": [],
+    "applicableProducts": [],
+    "expiresAt": "2025-12-31T23:59:59Z",
+    "isActive": true
+  },
+  {
+    "id": "coup_008",
+    "code": "EXPIRED10",
+    "type": "percentage",
+    "value": 10,
+    "minOrderAmount": 0,
+    "maxDiscount": 20,
+    "usageLimit": 100,
+    "usedCount": 100,
+    "applicableCategories": [],
+    "applicableProducts": [],
+    "expiresAt": "2024-01-01T00:00:00Z",
+    "isActive": false
+  }
+]
