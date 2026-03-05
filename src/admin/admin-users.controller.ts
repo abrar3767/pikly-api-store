@@ -22,8 +22,8 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { User, UserDocument } from "../../database/user.schema";
-import { successResponse } from "../../common/api-utils";
+import { User, UserDocument } from "../database/user.schema";
+import { successResponse } from "../common/api-utils";
 
 // Admin users controller does not inject UsersService because that service is
 // scoped to customer-facing operations (getProfile, updateProfile, addresses).

@@ -21,8 +21,8 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { ProductsService } from "../../products/products.service";
-import { successResponse } from "../../common/api-utils";
+import { ProductsService } from "../products/products.service";
+import { successResponse } from "../common/api-utils";
 
 // All endpoints here require a valid JWT token (AuthGuard) AND the 'admin'
 // role (RolesGuard). A request that passes JWT but has role:'customer' will

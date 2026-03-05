@@ -23,8 +23,8 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { Coupon, CouponDocument } from "../../database/coupon.schema";
-import { successResponse } from "../../common/api-utils";
+import { Coupon, CouponDocument } from "../database/coupon.schema";
+import { successResponse } from "../common/api-utils";
 
 // Coupons are the primary thing an admin needs to create and manage day-to-day.
 // This controller owns the full lifecycle: create, edit, activate, deactivate,

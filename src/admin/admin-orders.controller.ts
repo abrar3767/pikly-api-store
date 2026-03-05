@@ -16,11 +16,11 @@ import {
 } from "@nestjs/swagger";
 import { AuthGuard } from "@nestjs/passport";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, PipelineStage } from "mongoose";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { Order, OrderDocument } from "../../database/order.schema";
-import { successResponse } from "../../common/api-utils";
+import { Order, OrderDocument } from "../database/order.schema";
+import { successResponse } from "../common/api-utils";
 
 // Admin orders gives the admin team full visibility across ALL orders — not
 // just their own. The customer-facing OrdersController at /api/orders only
@@ -102,7 +102,7 @@ export class AdminOrdersController {
   @Get("stats")
   @ApiOperation({ summary: "[Admin] Get order count grouped by status" })
   async stats() {
-    const pipeline = [
+    const pipeline: PipelineStage[] = [
       { $group: { _id: "$status", count: { $sum: 1 } } },
       { $sort: { _id: 1 } },
     ];

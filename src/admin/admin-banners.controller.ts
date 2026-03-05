@@ -19,8 +19,8 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { HomepageService } from "../../homepage/homepage.service";
-import { successResponse } from "../../common/api-utils";
+import { HomepageService } from "../homepage/homepage.service";
+import { successResponse } from "../common/api-utils";
 
 // AdminBannersController delegates to HomepageService for all banner operations
 // because HomepageService owns the BannerModel and also owns the homepage cache.

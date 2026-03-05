@@ -21,8 +21,8 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { CategoriesService } from "../../categories/categories.service";
-import { successResponse } from "../../common/api-utils";
+import { CategoriesService } from "../categories/categories.service";
+import { successResponse } from "../common/api-utils";
 
 @ApiTags("Admin — Categories")
 @ApiBearerAuth()
