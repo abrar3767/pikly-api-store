@@ -1,91 +1,62 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
-  Body,
-  Query,
-} from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiQuery } from "@nestjs/swagger";
-import { CartService } from "./cart.service";
-import { successResponse } from "../common/api-utils";
-import {
-  AddToCartDto,
-  UpdateCartDto,
-  RemoveFromCartDto,
-  ApplyCouponDto,
-  MergeCartDto,
-} from "./dto/cart.dto";
+import { Controller, Get, Post, Patch, Delete, Body, Query } from '@nestjs/common'
+import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger'
+import { CartService } from './cart.service'
+import { successResponse } from '../common/api-utils'
+import { AddToCartDto, UpdateCartDto, RemoveFromCartDto, ApplyCouponDto, MergeCartDto } from './dto/cart.dto'
 
-@ApiTags("Cart")
-@Controller("cart")
+@ApiTags('Cart')
+@Controller('cart')
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 
   @Get()
-  @ApiOperation({ summary: "Get cart by sessionId" })
-  @ApiQuery({ name: "sessionId", required: true })
-  // FIX BUG#2: async/await so successResponse receives resolved data, not a Promise
-  async getCart(@Query("sessionId") sessionId: string) {
-    return successResponse(await this.cartService.getCart(sessionId));
+  @ApiOperation({ summary: 'Get cart by sessionId' })
+  @ApiQuery({ name: 'sessionId', required: true })
+  getCart(@Query('sessionId') sessionId: string) {
+    return successResponse(this.cartService.getCart(sessionId))
   }
 
-  @Post("add")
-  @ApiOperation({ summary: "Add item to cart" })
-  async addItem(@Body() dto: AddToCartDto) {
-    return successResponse(await this.cartService.addItem(dto));
+  @Post('add')
+  @ApiOperation({ summary: 'Add item to cart' })
+  addItem(@Body() dto: AddToCartDto) {
+    return successResponse(this.cartService.addItem(dto))
   }
 
-  @Patch("update")
-  @ApiOperation({ summary: "Update item quantity (0 = remove)" })
-  async updateItem(@Body() dto: UpdateCartDto) {
-    return successResponse(await this.cartService.updateItem(dto));
+  @Patch('update')
+  @ApiOperation({ summary: 'Update item quantity (0 = remove)' })
+  updateItem(@Body() dto: UpdateCartDto) {
+    return successResponse(this.cartService.updateItem(dto))
   }
 
-  // FIX BUG#17: moved productId/variantId to query params — DELETE + body is non-standard
-  @Delete("remove")
-  @ApiOperation({ summary: "Remove item from cart" })
-  @ApiQuery({ name: "sessionId", required: true })
-  @ApiQuery({ name: "productId", required: true })
-  @ApiQuery({ name: "variantId", required: false })
-  async removeItem(
-    @Query("sessionId") sessionId: string,
-    @Query("productId") productId: string,
-    @Query("variantId") variantId?: string,
-  ) {
-    return successResponse(
-      await this.cartService.removeItem({
-        sessionId,
-        productId,
-        variantId: variantId ?? null,
-      }),
-    );
+  @Delete('remove')
+  @ApiOperation({ summary: 'Remove item from cart' })
+  removeItem(@Body() dto: RemoveFromCartDto) {
+    return successResponse(this.cartService.removeItem(dto))
   }
 
-  @Post("apply-coupon")
-  @ApiOperation({ summary: "Apply coupon code to cart" })
-  async applyCoupon(@Body() dto: ApplyCouponDto) {
-    return successResponse(await this.cartService.applyCoupon(dto));
+  @Post('apply-coupon')
+  @ApiOperation({ summary: 'Apply coupon code to cart' })
+  applyCoupon(@Body() dto: ApplyCouponDto) {
+    return successResponse(this.cartService.applyCoupon(dto))
   }
 
-  @Delete("remove-coupon")
-  @ApiOperation({ summary: "Remove applied coupon from cart" })
-  @ApiQuery({ name: "sessionId", required: true })
-  async removeCoupon(@Query("sessionId") sessionId: string) {
-    return successResponse(await this.cartService.removeCoupon(sessionId));
+  @Delete('remove-coupon')
+  @ApiOperation({ summary: 'Remove applied coupon from cart' })
+  @ApiQuery({ name: 'sessionId', required: true })
+  removeCoupon(@Query('sessionId') sessionId: string) {
+    return successResponse(this.cartService.removeCoupon(sessionId))
   }
 
-  @Post("merge")
-  @ApiOperation({ summary: "Merge guest cart into user cart after login" })
-  async mergeCart(@Body() dto: MergeCartDto) {
-    return successResponse(await this.cartService.mergeCart(dto));
+  @Post('merge')
+  @ApiOperation({ summary: 'Merge guest cart into user cart after login' })
+  mergeCart(@Body() dto: MergeCartDto) {
+    return successResponse(this.cartService.mergeCart(dto))
   }
 
-  @Get("summary")
-  @ApiOperation({ summary: "Get lightweight cart summary (count + total)" })
-  @ApiQuery({ name: "sessionId", required: true })
-  async getSummary(@Query("sessionId") sessionId: string) {
-    return successResponse(await this.cartService.getSummary(sessionId));
+  @Get('summary')
+  @ApiOperation({ summary: 'Get lightweight cart summary (item count + total)' })
+  @ApiQuery({ name: 'sessionId', required: true })
+  getSummary(@Query('sessionId') sessionId: string) {
+    return successResponse(this.cartService.getSummary(sessionId))
   }
 }

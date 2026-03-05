@@ -1,16 +1,11 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
-import { User, UserDocument } from "../database/user.schema";
-import { ProductsService } from "../products/products.service";
-import { smartPaginate } from "../common/api-utils";
+import { Injectable, NotFoundException } from '@nestjs/common'
+import { InjectModel } from '@nestjs/mongoose'
+import { Model }       from 'mongoose'
+import { User, UserDocument } from '../database/user.schema'
+import { ProductsService }    from '../products/products.service'
+import { smartPaginate }      from '../common/api-utils'
 
-// RecentlyViewedService no longer reads products.json itself. Like WishlistService,
-// it reads from ProductsService.products — the shared in-memory array. The
-// recently-viewed list is still stored as an ordered array of product IDs inside
-// the User document, with a max of 20 items enforced on every track() call.
-
-const MAX_ITEMS = 20;
+const MAX_ITEMS = 20
 
 @Injectable()
 export class RecentlyViewedService {
@@ -20,69 +15,31 @@ export class RecentlyViewedService {
   ) {}
 
   async track(userId: string, productId: string) {
-    const user = await this.userModel.findById(userId);
-    if (!user)
-      throw new NotFoundException({
-        code: "USER_NOT_FOUND",
-        message: "User not found",
-      });
-
-    let list = user.recentlyViewed ?? [];
-    list = list.filter((id: string) => id !== productId); // deduplicate
-    list.unshift(productId); // most recent first
-    if (list.length > MAX_ITEMS) list = list.slice(0, MAX_ITEMS);
-
-    await this.userModel.findByIdAndUpdate(userId, { recentlyViewed: list });
-    return { tracked: true, productId, userId };
+    const user = await this.userModel.findById(userId)
+    if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'User not found' })
+    let list = user.recentlyViewed ?? []
+    list = list.filter((id: string) => id !== productId)
+    list.unshift(productId)
+    if (list.length > MAX_ITEMS) list = list.slice(0, MAX_ITEMS)
+    await this.userModel.findByIdAndUpdate(userId, { recentlyViewed: list })
+    return { tracked: true, productId, userId }
   }
 
-  async getRecent(
-    userId: string,
-    query: { page?: number; limit?: number; cursor?: string },
-  ) {
-    const { page, limit = 10, cursor } = query;
-
-    const user = await this.userModel.findById(userId);
-    if (!user)
-      throw new NotFoundException({
-        code: "USER_NOT_FOUND",
-        message: "User not found",
-      });
-
-    const ids = user.recentlyViewed ?? [];
+  async getRecent(userId: string, query: { page?: number; limit?: number; cursor?: string }) {
+    const { page, limit = 10, cursor } = query
+    const user = await this.userModel.findById(userId)
+    if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'User not found' })
+    const ids   = user.recentlyViewed ?? []
     const items = ids
-      .map((id: string) =>
-        this.productsService.products.find((p) => p.id === id && p.isActive),
-      )
+      .map((id: string) => this.productsService.products.find(p => p.id === id && p.isActive))
       .filter(Boolean)
-      .map((p: any) => ({
-        id: p.id,
-        slug: p.slug,
-        title: p.title,
-        brand: p.brand,
-        media: p.media,
-        pricing: p.pricing,
-        ratings: p.ratings,
-      }));
-
-    const paginated = smartPaginate(items, { page, limit, cursor });
-
+      .map((p: any) => ({ id:p.id,slug:p.slug,title:p.title,brand:p.brand,media:p.media,pricing:p.pricing,ratings:p.ratings }))
+    const paginated = smartPaginate(items, { page, limit, cursor })
     return {
-      products: paginated.items,
-      userId,
-      totalViewed: items.length,
-      limit: paginated.limit,
-      hasNextPage: paginated.hasNextPage,
-      hasPrevPage: paginated.hasPrevPage,
-      mode: paginated.mode,
-      ...(paginated.mode === "offset" && {
-        page: (paginated as any).page,
-        totalPages: (paginated as any).totalPages,
-      }),
-      ...(paginated.mode === "cursor" && {
-        nextCursor: (paginated as any).nextCursor,
-        prevCursor: (paginated as any).prevCursor,
-      }),
-    };
+      products: paginated.items, userId, totalViewed: items.length,
+      limit: paginated.limit, hasNextPage: paginated.hasNextPage, hasPrevPage: paginated.hasPrevPage, mode: paginated.mode,
+      ...(paginated.mode==='offset' && { page:(paginated as any).page, totalPages:(paginated as any).totalPages }),
+      ...(paginated.mode==='cursor' && { nextCursor:(paginated as any).nextCursor, prevCursor:(paginated as any).prevCursor }),
+    }
   }
 }

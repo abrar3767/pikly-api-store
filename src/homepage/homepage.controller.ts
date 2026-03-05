@@ -1,7 +1,7 @@
-import { Controller, Get, Query } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiQuery } from "@nestjs/swagger";
-import { HomepageService } from "./homepage.service";
-import { successResponse } from "../common/api-utils";
+import { Controller, Get, Query } from '@nestjs/common'
+import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger'
+import { HomepageService } from './homepage.service'
+import { successResponse } from '../common/api-utils'
 
 @ApiTags("Homepage")
 @Controller("homepage")

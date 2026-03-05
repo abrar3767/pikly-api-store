@@ -1,43 +1,31 @@
-import {
-  ExceptionFilter,
-  Catch,
-  ArgumentsHost,
-  HttpException,
-  HttpStatus,
-} from "@nestjs/common";
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common'
 
-// FIX BUG#20: without this filter, raw Mongoose CastErrors (invalid ObjectId etc.)
-// leak internal stack traces to the client. This filter intercepts all unhandled
-// exceptions and returns a clean, consistent error shape.
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse();
+    const ctx  = host.switchToHttp()
+    const res  = ctx.getResponse()
+    const req  = ctx.getRequest()
 
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let code = "INTERNAL_ERROR";
-    let message = "An unexpected error occurred";
+    let status  = HttpStatus.INTERNAL_SERVER_ERROR
+    let message = 'Internal server error'
+    let code    = 'INTERNAL_ERROR'
 
     if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      const res = exception.getResponse() as any;
-      code = res.code ?? "HTTP_ERROR";
-      message = res.message ?? exception.message;
-    } else if ((exception as any)?.name === "CastError") {
-      // Mongoose throws CastError when an invalid ObjectId is passed (e.g. /users/abc)
-      status = HttpStatus.BAD_REQUEST;
-      code = "INVALID_ID";
-      message = "Invalid ID format";
-    } else if ((exception as any)?.name === "ValidationError") {
-      status = HttpStatus.BAD_REQUEST;
-      code = "VALIDATION_ERROR";
-      message = (exception as any).message;
+      status = exception.getStatus()
+      const body = exception.getResponse() as any
+      message = body?.message ?? exception.message
+      code    = body?.code    ?? 'HTTP_ERROR'
+    } else if ((exception as any)?.name === 'CastError') {
+      status  = 400
+      message = `Invalid id format: ${(exception as any).value}`
+      code    = 'INVALID_ID'
+    } else if ((exception as any)?.name === 'ValidationError') {
+      status  = 400
+      message = Object.values((exception as any).errors).map((e: any) => e.message).join(', ')
+      code    = 'VALIDATION_ERROR'
     }
 
-    response.status(status).json({
-      success: false,
-      error: { code, message, statusCode: status },
-    });
+    res.status(status).json({ success: false, code, message, path: req.url, timestamp: new Date().toISOString() })
   }
 }

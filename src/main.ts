@@ -1,11 +1,9 @@
-// ── Fix: Node.js v22+ Windows DNS SRV resolution bug ──────────────────────
-import { setServers } from "node:dns/promises";
-setServers(["8.8.8.8", "8.8.4.4"]);
-// ──────────────────────────────────────────────────────────────────────────
-
 import "reflect-metadata";
 import * as dotenv from "dotenv";
 dotenv.config();
+
+import { setDefaultResultOrder } from "node:dns";
+setDefaultResultOrder("ipv4first");
 
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
@@ -21,28 +19,27 @@ async function bootstrap() {
 
   app.setGlobalPrefix("api");
 
-  // FIX BUG#18: restrict CORS to known origins in production
+  // CORS — allow all origins in dev, restrict via env in prod
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",")
+    : "*";
   app.enableCors({
-    origin: process.env.ALLOWED_ORIGINS
-      ? process.env.ALLOWED_ORIGINS.split(",")
-      : "*",
+    origin: allowedOrigins,
     methods: "GET,POST,PATCH,DELETE,OPTIONS",
     allowedHeaders: "Content-Type,Authorization",
-    credentials: true,
   });
 
   app.use(helmet());
   app.use(compression());
   app.use(morgan("combined"));
 
-  // FIX BUG#20: global filter catches raw Mongoose errors and formats them cleanly
   app.useGlobalFilters(new AllExceptionsFilter());
 
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: false, // keep false — frontend may send extra fields during dev
+      forbidNonWhitelisted: false,
     }),
   );
 
