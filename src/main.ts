@@ -1,7 +1,4 @@
-// ── Fix: Node.js v22+ Windows DNS SRV resolution bug ──────────────────────
-import { setServers } from "node:dns/promises";
-setServers(["8.8.8.8", "8.8.4.4"]);
-// ──────────────────────────────────────────────────────────────────────────
+
 
 import "reflect-metadata";
 import * as dotenv from "dotenv";
