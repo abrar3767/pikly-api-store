@@ -94,16 +94,28 @@ export class AuthService {
     return { message: "Logged out successfully" };
   }
 
+  // FIX BUG#5: tokens older than 30 days are rejected even if signature is valid
   async refreshToken(dto: RefreshTokenDto) {
     try {
       const payload = this.jwtService.verify(dto.token, {
         ignoreExpiration: true,
       });
+
+      const GRACE_PERIOD = 30 * 24 * 60 * 60; // 30 days in seconds
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp && now - payload.exp > GRACE_PERIOD) {
+        throw new UnauthorizedException({
+          code: "TOKEN_TOO_OLD",
+          message: "Token has expired too long ago. Please log in again.",
+        });
+      }
+
       const user = await this.userModel.findById(payload.sub);
       if (!user || !user.isActive) throw new UnauthorizedException();
       const { token, expiresIn } = this.sign(user);
       return { token, expiresIn };
-    } catch {
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
       throw new UnauthorizedException({
         code: "INVALID_TOKEN",
         message: "Invalid or malformed token",

@@ -53,7 +53,6 @@ export class CartService {
         userId: null,
         items: [],
         coupon: null,
-        updatedAt: new Date().toISOString(),
       });
     }
     return cart;
@@ -109,7 +108,7 @@ export class CartService {
       isEmpty: items.length === 0,
       sessionId: cart.sessionId,
       userId: cart.userId,
-      updatedAt: cart.updatedAt,
+      updatedAt: (cart as any).updatedAt,
     };
   }
 
@@ -179,7 +178,6 @@ export class CartService {
 
     cart.items = items;
     if (dto.userId) cart.userId = dto.userId;
-    cart.updatedAt = new Date().toISOString();
     await cart.save();
     return this.computeSummary(cart);
   }
@@ -212,7 +210,6 @@ export class CartService {
     }
 
     cart.items = items;
-    cart.updatedAt = new Date().toISOString();
     await cart.save();
     return this.computeSummary(cart);
   }
@@ -232,7 +229,6 @@ export class CartService {
         code: "ITEM_NOT_FOUND",
         message: "Item not in cart",
       });
-    cart.updatedAt = new Date().toISOString();
     await cart.save();
     return this.computeSummary(cart);
   }
@@ -292,7 +288,6 @@ export class CartService {
       value: coupon.value,
       discountValue: 0,
     };
-    cart.updatedAt = new Date().toISOString();
     await cart.save();
     return this.computeSummary(cart);
   }
@@ -300,7 +295,6 @@ export class CartService {
   async removeCoupon(sessionId: string) {
     const cart = await this.getOrCreate(sessionId);
     cart.coupon = null;
-    cart.updatedAt = new Date().toISOString();
     await cart.save();
     return this.computeSummary(cart);
   }
@@ -335,7 +329,6 @@ export class CartService {
     }
 
     userCart.items = userItems;
-    userCart.updatedAt = new Date().toISOString();
     await userCart.save();
     await this.cartModel.deleteOne({ sessionId: dto.guestSessionId });
     return this.computeSummary(userCart);
@@ -358,7 +351,6 @@ export class CartService {
     const cart = await this.getOrCreate(sessionId);
     cart.items = [];
     cart.coupon = null;
-    cart.updatedAt = new Date().toISOString();
     await cart.save();
   }
 }

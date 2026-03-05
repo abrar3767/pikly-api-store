@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  OnModuleInit,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
@@ -14,7 +15,8 @@ import { CartService } from "../cart/cart.service";
 import { smartPaginate } from "../common/api-utils";
 
 @Injectable()
-export class OrdersService {
+// FIX BUG#7: implement OnModuleInit so counter init is properly awaited
+export class OrdersService implements OnModuleInit {
   private products: any[] = [];
   private counter = 1000;
 
@@ -24,7 +26,6 @@ export class OrdersService {
     private readonly cartService: CartService,
   ) {
     this.load();
-    this.initCounter();
   }
 
   private load() {
@@ -40,7 +41,8 @@ export class OrdersService {
     }
   }
 
-  private async initCounter() {
+  // FIX BUG#7: async lifecycle hook — NestJS awaits this before accepting requests
+  async onModuleInit() {
     const count = await this.orderModel.countDocuments();
     this.counter = count + 1000;
   }
@@ -67,7 +69,6 @@ export class OrdersService {
         message: "Address not found",
       });
 
-    // Validate stock
     for (const item of cart.items as any[]) {
       const product = this.products.find((p) => p.id === item.productId);
       if (!product)
@@ -83,7 +84,9 @@ export class OrdersService {
       }
     }
 
-    const orderId = `ORD-2025-${String(++this.counter).padStart(5, "0")}`;
+    // FIX BUG#8: use current year dynamically, not hardcoded 2025
+    const year = new Date().getFullYear();
+    const orderId = `ORD-${year}-${String(++this.counter).padStart(5, "0")}`;
     const now = new Date().toISOString();
 
     const order = await this.orderModel.create({

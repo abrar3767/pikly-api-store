@@ -1,4 +1,7 @@
-
+// ── Fix: Node.js v22+ Windows DNS SRV resolution bug ──────────────────────
+import { setServers } from "node:dns/promises";
+setServers(["8.8.8.8", "8.8.4.4"]);
+// ──────────────────────────────────────────────────────────────────────────
 
 import "reflect-metadata";
 import * as dotenv from "dotenv";
@@ -8,6 +11,7 @@ import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
+import { AllExceptionsFilter } from "./common/all-exceptions.filter";
 import helmet from "helmet";
 import compression from "compression";
 import morgan from "morgan";
@@ -15,31 +19,33 @@ import morgan from "morgan";
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Global prefix
   app.setGlobalPrefix("api");
 
-  // CORS
+  // FIX BUG#18: restrict CORS to known origins in production
   app.enableCors({
-    origin: "*",
+    origin: process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(",")
+      : "*",
     methods: "GET,POST,PATCH,DELETE,OPTIONS",
     allowedHeaders: "Content-Type,Authorization",
+    credentials: true,
   });
 
-  // Security + compression
   app.use(helmet());
   app.use(compression());
   app.use(morgan("combined"));
 
-  // Validation
+  // FIX BUG#20: global filter catches raw Mongoose errors and formats them cleanly
+  app.useGlobalFilters(new AllExceptionsFilter());
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: false,
+      forbidNonWhitelisted: false, // keep false — frontend may send extra fields during dev
     }),
   );
 
-  // Swagger
   const config = new DocumentBuilder()
     .setTitle("Pikly Store API")
     .setDescription(

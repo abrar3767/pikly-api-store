@@ -13,7 +13,8 @@ import { User, UserSchema } from "../database/user.schema";
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       useFactory: () => ({
-        secret: process.env.JWT_SECRET ?? "pikly_secret",
+        // FIX BUG#1: fallback must match jwt.strategy.ts fallback exactly
+        secret: process.env.JWT_SECRET ?? "pikly_store_secret_2025",
         signOptions: { expiresIn: "7d" },
       }),
     }),
