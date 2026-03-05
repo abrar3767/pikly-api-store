@@ -5,9 +5,9 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import * as fs from "fs";
-import * as path from "path";
 import { Cart, CartDocument } from "../database/cart.schema";
+import { Coupon, CouponDocument } from "../database/coupon.schema";
+import { ProductsService } from "../products/products.service";
 import {
   AddToCartDto,
   UpdateCartDto,
@@ -16,34 +16,20 @@ import {
   MergeCartDto,
 } from "./dto/cart.dto";
 
+// CartService now reads products from ProductsService.products (in-memory, already
+// loaded from MongoDB by ProductsService.onModuleInit) and coupons directly from
+// the CouponModel. This eliminates the two fs.readFileSync calls that previously
+// ran on every cold start (Bug #19). The cart itself is stored in MongoDB as before.
+
 @Injectable()
 export class CartService {
-  private products: any[] = [];
-  private coupons: any[] = [];
+  constructor(
+    @InjectModel(Cart.name) private cartModel: Model<CartDocument>,
+    @InjectModel(Coupon.name) private couponModel: Model<CouponDocument>,
+    private readonly productsService: ProductsService,
+  ) {}
 
-  constructor(@InjectModel(Cart.name) private cartModel: Model<CartDocument>) {
-    this.load();
-  }
-
-  private load() {
-    try {
-      this.products = JSON.parse(
-        fs.readFileSync(
-          path.join(process.cwd(), "data", "products.json"),
-          "utf-8",
-        ),
-      );
-      this.coupons = JSON.parse(
-        fs.readFileSync(
-          path.join(process.cwd(), "data", "coupons.json"),
-          "utf-8",
-        ),
-      );
-    } catch {
-      this.products = [];
-      this.coupons = [];
-    }
-  }
+  // ── Private helpers ────────────────────────────────────────────────────────
 
   private async getOrCreate(sessionId: string): Promise<CartDocument> {
     let cart = await this.cartModel.findOne({ sessionId });
@@ -53,6 +39,7 @@ export class CartService {
         userId: null,
         items: [],
         coupon: null,
+        // updatedAt is handled automatically by mongoose timestamps:true (Bug #6 fix)
       });
     }
     return cart;
@@ -108,9 +95,10 @@ export class CartService {
       isEmpty: items.length === 0,
       sessionId: cart.sessionId,
       userId: cart.userId,
-      updatedAt: (cart as any).updatedAt,
     };
   }
+
+  // ── Public API ─────────────────────────────────────────────────────────────
 
   async getCart(sessionId: string) {
     const cart = await this.getOrCreate(sessionId);
@@ -119,7 +107,9 @@ export class CartService {
 
   async addItem(dto: AddToCartDto) {
     const cart = await this.getOrCreate(dto.sessionId);
-    const product = this.products.find(
+
+    // Read product from ProductsService in-memory array — no DB call needed
+    const product = this.productsService.products.find(
       (p) => p.id === dto.productId && p.isActive,
     );
     if (!product)
@@ -235,9 +225,12 @@ export class CartService {
 
   async applyCoupon(dto: ApplyCouponDto) {
     const cart = await this.getOrCreate(dto.sessionId);
-    const coupon = this.coupons.find(
-      (c) => c.code.toUpperCase() === dto.code.toUpperCase() && c.isActive,
-    );
+
+    // Fetch coupon from MongoDB — admin can now create/edit coupons and changes apply immediately
+    const coupon = await this.couponModel.findOne({
+      code: dto.code.toUpperCase(),
+      isActive: true,
+    });
     if (!coupon)
       throw new BadRequestException({
         code: "INVALID_COUPON",
@@ -269,7 +262,7 @@ export class CartService {
 
     if (coupon.applicableCategories?.length > 0) {
       const productIds = (cart.items ?? []).map((i: any) => i.productId);
-      const cartProducts = this.products.filter((p) =>
+      const cartProducts = this.productsService.products.filter((p) =>
         productIds.includes(p.id),
       );
       const valid = cartProducts.some((p) =>
@@ -287,7 +280,7 @@ export class CartService {
       type: coupon.type,
       value: coupon.value,
       discountValue: 0,
-    };
+    } as any;
     await cart.save();
     return this.computeSummary(cart);
   }

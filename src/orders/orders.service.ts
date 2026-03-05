@@ -6,42 +6,32 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import * as fs from "fs";
-import * as path from "path";
 import { Order, OrderDocument } from "../database/order.schema";
 import { User, UserDocument } from "../database/user.schema";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { CartService } from "../cart/cart.service";
+import { ProductsService } from "../products/products.service";
 import { smartPaginate } from "../common/api-utils";
 
+// OrdersService previously loaded products.json itself in a load() method
+// called from the constructor. It now reads from ProductsService.products —
+// the shared in-memory array. The counter is initialized via OnModuleInit
+// so the first order ID is always based on the actual current DB count
+// rather than starting at 1000 and potentially colliding with seeded data.
+
 @Injectable()
-// FIX BUG#7: implement OnModuleInit so counter init is properly awaited
 export class OrdersService implements OnModuleInit {
-  private products: any[] = [];
   private counter = 1000;
 
   constructor(
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private readonly cartService: CartService,
-  ) {
-    this.load();
-  }
+    private readonly productsService: ProductsService,
+  ) {}
 
-  private load() {
-    try {
-      this.products = JSON.parse(
-        fs.readFileSync(
-          path.join(process.cwd(), "data", "products.json"),
-          "utf-8",
-        ),
-      );
-    } catch {
-      this.products = [];
-    }
-  }
-
-  // FIX BUG#7: async lifecycle hook — NestJS awaits this before accepting requests
+  // FIX BUG#7: OnModuleInit is properly awaited by NestJS before the application
+  // accepts any requests, so this.counter will always be initialized correctly.
   async onModuleInit() {
     const count = await this.orderModel.countDocuments();
     this.counter = count + 1000;
@@ -69,12 +59,15 @@ export class OrdersService implements OnModuleInit {
         message: "Address not found",
       });
 
+    // Validate stock against the in-memory products array — no extra DB call needed
     for (const item of cart.items as any[]) {
-      const product = this.products.find((p) => p.id === item.productId);
+      const product = this.productsService.products.find(
+        (p) => p.id === item.productId,
+      );
       if (!product)
         throw new NotFoundException({
           code: "PRODUCT_NOT_FOUND",
-          message: `Product ${item.title} no longer available`,
+          message: `Product "${item.title}" no longer available`,
         });
       if (product.inventory.stock < item.quantity) {
         throw new BadRequestException({
@@ -108,7 +101,7 @@ export class OrdersService implements OnModuleInit {
         },
       ],
       trackingNumber: null,
-      estimatedDelivery: new Date(Date.now() + 5 * 86400000).toISOString(),
+      estimatedDelivery: new Date(Date.now() + 5 * 86_400_000).toISOString(),
     });
 
     await this.cartService.clearCart(dto.sessionId);
@@ -146,11 +139,11 @@ export class OrdersService implements OnModuleInit {
         hasNextPage: paginated.hasNextPage,
         hasPrevPage: paginated.hasPrevPage,
         mode: paginated.mode,
-        ...((paginated as any).mode === "offset" && {
+        ...(paginated.mode === "offset" && {
           page: (paginated as any).page,
           totalPages: (paginated as any).totalPages,
         }),
-        ...((paginated as any).mode === "cursor" && {
+        ...(paginated.mode === "cursor" && {
           nextCursor: (paginated as any).nextCursor,
           prevCursor: (paginated as any).prevCursor,
         }),

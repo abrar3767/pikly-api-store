@@ -1,29 +1,23 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import * as fs from "fs";
-import * as path from "path";
 import { User, UserDocument } from "../database/user.schema";
+import { ProductsService } from "../products/products.service";
 import { smartPaginate } from "../common/api-utils";
+
+// RecentlyViewedService no longer reads products.json itself. Like WishlistService,
+// it reads from ProductsService.products — the shared in-memory array. The
+// recently-viewed list is still stored as an ordered array of product IDs inside
+// the User document, with a max of 20 items enforced on every track() call.
 
 const MAX_ITEMS = 20;
 
 @Injectable()
 export class RecentlyViewedService {
-  private products: any[] = [];
-
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {
-    try {
-      this.products = JSON.parse(
-        fs.readFileSync(
-          path.join(process.cwd(), "data", "products.json"),
-          "utf-8",
-        ),
-      );
-    } catch {
-      this.products = [];
-    }
-  }
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private readonly productsService: ProductsService,
+  ) {}
 
   async track(userId: string, productId: string) {
     const user = await this.userModel.findById(userId);
@@ -34,8 +28,8 @@ export class RecentlyViewedService {
       });
 
     let list = user.recentlyViewed ?? [];
-    list = list.filter((id: string) => id !== productId); // remove duplicate
-    list.unshift(productId); // add to front
+    list = list.filter((id: string) => id !== productId); // deduplicate
+    list.unshift(productId); // most recent first
     if (list.length > MAX_ITEMS) list = list.slice(0, MAX_ITEMS);
 
     await this.userModel.findByIdAndUpdate(userId, { recentlyViewed: list });
@@ -57,7 +51,9 @@ export class RecentlyViewedService {
 
     const ids = user.recentlyViewed ?? [];
     const items = ids
-      .map((id: string) => this.products.find((p) => p.id === id && p.isActive))
+      .map((id: string) =>
+        this.productsService.products.find((p) => p.id === id && p.isActive),
+      )
       .filter(Boolean)
       .map((p: any) => ({
         id: p.id,
@@ -79,11 +75,11 @@ export class RecentlyViewedService {
       hasNextPage: paginated.hasNextPage,
       hasPrevPage: paginated.hasPrevPage,
       mode: paginated.mode,
-      ...((paginated as any).mode === "offset" && {
+      ...(paginated.mode === "offset" && {
         page: (paginated as any).page,
         totalPages: (paginated as any).totalPages,
       }),
-      ...((paginated as any).mode === "cursor" && {
+      ...(paginated.mode === "cursor" && {
         nextCursor: (paginated as any).nextCursor,
         prevCursor: (paginated as any).prevCursor,
       }),

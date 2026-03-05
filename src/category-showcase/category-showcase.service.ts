@@ -1,32 +1,20 @@
 import { Injectable } from "@nestjs/common";
-import * as fs from "fs";
-import * as path from "path";
+import { ProductsService } from "../products/products.service";
+import { CategoriesService } from "../categories/categories.service";
 import { CategoryShowcaseDto } from "./dto/category-showcase.dto";
 import { smartPaginate } from "../common/api-utils";
 
+// CategoryShowcaseService previously loaded both products.json and categories.json
+// in its constructor. It now reads from the shared in-memory arrays on
+// ProductsService and CategoriesService — the last two fs.readFileSync calls in
+// the entire codebase beyond health checks. All logic is unchanged.
+
 @Injectable()
 export class CategoryShowcaseService {
-  private products: any[] = [];
-  private categories: any[] = [];
-
-  constructor() {
-    this.load();
-  }
-
-  private load() {
-    try {
-      const dataDir = path.join(process.cwd(), "data");
-      this.products = JSON.parse(
-        fs.readFileSync(path.join(dataDir, "products.json"), "utf-8"),
-      );
-      this.categories = JSON.parse(
-        fs.readFileSync(path.join(dataDir, "categories.json"), "utf-8"),
-      );
-    } catch {
-      this.products = [];
-      this.categories = [];
-    }
-  }
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly categoriesService: CategoriesService,
+  ) {}
 
   getShowcase(dto: CategoryShowcaseDto) {
     const {
@@ -39,7 +27,10 @@ export class CategoryShowcaseService {
       cursor,
     } = dto;
 
-    // Build unique top-level category map from products
+    const products = this.productsService.products;
+    const categories = this.categoriesService.categories;
+
+    // Build a map keyed by top-level category slug, accumulating products per category
     const categoryMap = new Map<
       string,
       {
@@ -50,11 +41,11 @@ export class CategoryShowcaseService {
       }
     >();
 
-    for (const product of this.products) {
+    for (const product of products) {
       if (!product.isActive) continue;
       const key = product.category as string;
       if (!categoryMap.has(key)) {
-        const catMeta = this.categories.find(
+        const catMeta = categories.find(
           (c: any) =>
             c.slug === key || c.name?.toLowerCase() === key?.toLowerCase(),
         );
@@ -68,36 +59,26 @@ export class CategoryShowcaseService {
       categoryMap.get(key)!.products.push(product);
     }
 
-    // Convert to array
-    let categories = Array.from(categoryMap.values());
+    let cats = Array.from(categoryMap.values());
 
-    // Filter by category slug
-    if (category) {
-      categories = categories.filter(
+    if (category)
+      cats = cats.filter(
         (c) => c.categorySlug.toLowerCase() === category.toLowerCase(),
       );
-    }
+    if (onlyFeatured) cats = cats.filter((c) => c.featured);
 
-    // Filter featured only
-    if (onlyFeatured) {
-      categories = categories.filter((c) => c.featured);
-    }
-
-    // Sort
     if (sort === "alphabetical") {
-      categories.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+      cats.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
     } else {
-      categories.sort((a, b) => b.products.length - a.products.length);
+      cats.sort((a, b) => b.products.length - a.products.length);
     }
 
-    // ── Smart Paginate — offset (page) or cursor ───────────────────────────
-    const paginated = smartPaginate(categories, {
+    const paginated = smartPaginate(cats, {
       page: cursor ? undefined : (page ?? 1),
       limit: limit ?? 6,
       cursor: cursor ?? undefined,
     });
 
-    // Build final response — slice products per category box
     const result = paginated.items.map((cat: any) => ({
       categoryName: cat.categoryName,
       categorySlug: cat.categorySlug,
@@ -117,12 +98,10 @@ export class CategoryShowcaseService {
         hasNextPage: paginated.hasNextPage,
         hasPrevPage: paginated.hasPrevPage,
         mode: paginated.mode,
-        // offset mode fields
         ...(paginated.mode === "offset" && {
           page: (paginated as any).page,
           totalPages: (paginated as any).totalPages,
         }),
-        // cursor mode fields
         ...(paginated.mode === "cursor" && {
           nextCursor: (paginated as any).nextCursor,
           prevCursor: (paginated as any).prevCursor,
