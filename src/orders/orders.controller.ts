@@ -3,14 +3,11 @@ import {
   Body, Param, Query, UseGuards, Request,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger'
-import { AuthGuard }    from '@nestjs/passport'
-import { OrdersService }  from './orders.service'
+import { AuthGuard }     from '@nestjs/passport'
+import { OrdersService } from './orders.service'
 import { CreateOrderDto } from './dto/create-order.dto'
 import { successResponse } from '../common/api-utils'
 
-// Every route requires a valid JWT. userId is always derived from req.user.userId
-// (the verified token payload) — never from a query param or request body.
-// This prevents one user from reading or cancelling another user's orders.
 @ApiTags('Orders')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -19,17 +16,31 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post('create')
-  @ApiOperation({ summary: 'Create order from cart (requires auth)' })
+  @ApiOperation({ summary: 'Create order from cart (DES-03: supports Idempotency-Key)' })
   async create(@Request() req: any, @Body() dto: CreateOrderDto) {
     const data = await this.ordersService.createOrder(req.user.userId, dto)
     return successResponse(data)
   }
 
+  // FEAT-02: pre-checkout shipping cost endpoint
+  @Get('shipping-estimate')
+  @ApiOperation({ summary: 'Calculate shipping cost before placing order' })
+  @ApiQuery({ name: 'sessionId',  required: true })
+  @ApiQuery({ name: 'addressId',  required: true })
+  async shippingEstimate(
+    @Request() req: any,
+    @Query('sessionId') sessionId: string,
+    @Query('addressId') addressId: string,
+  ) {
+    const data = await this.ordersService.calculateShipping(sessionId, addressId, req.user.userId)
+    return successResponse(data)
+  }
+
   @Get()
-  @ApiOperation({ summary: 'Get all orders for the authenticated user' })
+  @ApiOperation({ summary: 'Get all orders for the authenticated user (SVC-02: DB-level pagination)' })
   @ApiQuery({ name: 'page',   required: false })
   @ApiQuery({ name: 'limit',  required: false })
-  @ApiQuery({ name: 'status', required: false, description: 'pending | confirmed | processing | shipped | delivered | cancelled' })
+  @ApiQuery({ name: 'status', required: false })
   async getUserOrders(
     @Request() req: any,
     @Query('page')   page?:   number,
@@ -41,26 +52,23 @@ export class OrdersController {
   }
 
   @Get(':orderId')
-  @ApiOperation({ summary: 'Get single order details (only your own orders)' })
+  @ApiOperation({ summary: 'Get single order' })
   @ApiParam({ name: 'orderId' })
   async getOrder(@Request() req: any, @Param('orderId') orderId: string) {
-    const data = await this.ordersService.getOrder(orderId, req.user.userId)
-    return successResponse(data)
+    return successResponse(await this.ordersService.getOrder(orderId, req.user.userId))
   }
 
   @Patch(':orderId/cancel')
-  @ApiOperation({ summary: 'Cancel an order (only pending/confirmed, only your own)' })
+  @ApiOperation({ summary: 'Cancel a pending/confirmed order' })
   @ApiParam({ name: 'orderId' })
   async cancelOrder(@Request() req: any, @Param('orderId') orderId: string) {
-    const data = await this.ordersService.cancelOrder(orderId, req.user.userId)
-    return successResponse(data)
+    return successResponse(await this.ordersService.cancelOrder(orderId, req.user.userId))
   }
 
   @Get(':orderId/track')
-  @ApiOperation({ summary: 'Track order status with timeline (only your own orders)' })
+  @ApiOperation({ summary: 'Track order status with full timeline' })
   @ApiParam({ name: 'orderId' })
   async trackOrder(@Request() req: any, @Param('orderId') orderId: string) {
-    const data = await this.ordersService.trackOrder(orderId, req.user.userId)
-    return successResponse(data)
+    return successResponse(await this.ordersService.trackOrder(orderId, req.user.userId))
   }
 }

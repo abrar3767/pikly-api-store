@@ -1,16 +1,24 @@
-import { Controller, Get, Param, Query } from '@nestjs/common'
-import { ApiTags, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger'
-import { ProductsService }    from './products.service'
-import { FilterProductsDto }  from './dto/filter-products.dto'
-import { ReviewQueryDto }     from './dto/review-query.dto'
+import {
+  Controller, Get, Post, Param, Query,
+  Body, UseGuards, Request,
+} from '@nestjs/common'
+import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger'
+import { AuthGuard }        from '@nestjs/passport'
+import { ProductsService }  from './products.service'
+import { CategoriesService } from '../categories/categories.service'
+import { FilterProductsDto } from './dto/filter-products.dto'
+import { ReviewQueryDto }    from './dto/review-query.dto'
+import { SubmitReviewDto }   from './dto/submit-review.dto'
 import { successResponse, paginatedResponse } from '../common/api-utils'
 
 @ApiTags('Products')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService:   ProductsService,
+    private readonly categoriesService: CategoriesService,
+  ) {}
 
-  // ── GET /products ──────────────────────────────────────────────────────────
   @Get()
   @ApiOperation({ summary: 'Get all products with filtering, search, sorting, facets' })
   findAll(@Query() query: FilterProductsDto) {
@@ -18,64 +26,65 @@ export class ProductsController {
     return paginatedResponse(data, data.pagination, { cacheHit })
   }
 
-  // ── SPECIAL ROUTES — must come BEFORE :slug ────────────────────────────────
-
   @Get('featured')
-  @ApiOperation({ summary: 'Get featured products' })
-  findFeatured() {
-    return successResponse(this.productsService.findFeatured())
-  }
+  @ApiOperation({ summary: 'Featured products' })
+  findFeatured() { return successResponse(this.productsService.findFeatured()) }
 
   @Get('bestsellers')
-  @ApiOperation({ summary: 'Get best selling products' })
-  findBestsellers() {
-    return successResponse(this.productsService.findBestsellers())
-  }
+  @ApiOperation({ summary: 'Best selling products' })
+  findBestsellers() { return successResponse(this.productsService.findBestsellers()) }
 
   @Get('new-arrivals')
-  @ApiOperation({ summary: 'Get new arrival products' })
-  findNewArrivals() {
-    return successResponse(this.productsService.findNewArrivals())
-  }
+  @ApiOperation({ summary: 'New arrival products' })
+  findNewArrivals() { return successResponse(this.productsService.findNewArrivals()) }
 
   @Get('trending')
-  @ApiOperation({ summary: 'Get trending products' })
-  findTrending() {
-    return successResponse(this.productsService.findTrending())
-  }
+  @ApiOperation({ summary: 'Trending products' })
+  findTrending() { return successResponse(this.productsService.findTrending()) }
 
   @Get('top-rated')
-  @ApiOperation({ summary: 'Get top rated products' })
-  findTopRated() {
-    return successResponse(this.productsService.findTopRated())
-  }
+  @ApiOperation({ summary: 'Top rated products' })
+  findTopRated() { return successResponse(this.productsService.findTopRated()) }
 
   @Get('on-sale')
-  @ApiOperation({ summary: 'Get products on sale' })
-  findOnSale() {
-    return successResponse(this.productsService.findOnSale())
-  }
+  @ApiOperation({ summary: 'Products on sale' })
+  findOnSale() { return successResponse(this.productsService.findOnSale()) }
 
   @Get('search/suggestions')
-  @ApiOperation({ summary: 'Get search suggestions (autocomplete)' })
-  @ApiQuery({ name: 'q', required: true, description: 'Search query' })
+  @ApiOperation({ summary: 'Search suggestions (autocomplete) — uses live category slugs (BUG-07 fix)' })
+  @ApiQuery({ name: 'q', required: true })
   getSuggestions(@Query('q') q: string) {
-    return successResponse(this.productsService.getSuggestions(q))
+    // Pass live categories so suggestions reflect current DB state, not a
+    // hardcoded list that would miss newly-created categories.
+    return successResponse(this.productsService.getSuggestions(q, this.categoriesService.categories))
   }
-
-  // ── :slug routes ───────────────────────────────────────────────────────────
 
   @Get(':slug')
   @ApiOperation({ summary: 'Get single product by slug' })
-  @ApiParam({ name: 'slug', description: 'Product slug' })
+  @ApiParam({ name: 'slug' })
   findOne(@Param('slug') slug: string) {
     return successResponse(this.productsService.findOne(slug))
   }
 
   @Get(':slug/reviews')
-  @ApiOperation({ summary: 'Get product reviews with filtering and sorting' })
-  @ApiParam({ name: 'slug', description: 'Product slug' })
+  @ApiOperation({ summary: 'Get product reviews with filtering and pagination' })
+  @ApiParam({ name: 'slug' })
   findReviews(@Param('slug') slug: string, @Query() query: ReviewQueryDto) {
     return successResponse(this.productsService.findReviews(slug, query))
+  }
+
+  // FEAT-01: Review submission endpoint (was completely missing before)
+  @Post(':slug/reviews')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Submit a product review (requires auth)' })
+  @ApiParam({ name: 'slug' })
+  async submitReview(
+    @Param('slug') slug: string,
+    @Request() req: any,
+    @Body() dto: SubmitReviewDto,
+  ) {
+    const data = await this.productsService.submitReview(slug, req.user.userId, dto)
+    return successResponse(data)
   }
 }

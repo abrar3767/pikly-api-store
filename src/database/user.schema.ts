@@ -39,7 +39,11 @@ export class User {
   @Prop({ default: 0 })
   loyaltyPoints: number
 
-  @Prop({ default: true })
+  // SEC-02: new accounts are unverified by default — users must confirm their
+  // email before logging in. The schema default is false so that any code path
+  // that creates a user without explicitly setting this (e.g. seed scripts)
+  // does NOT accidentally bypass email verification.
+  @Prop({ default: false })
   isVerified: boolean
 
   @Prop({ default: true })

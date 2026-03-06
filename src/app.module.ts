@@ -2,6 +2,8 @@ import { Module }         from '@nestjs/common'
 import { APP_GUARD }      from '@nestjs/core'
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { MongooseModule } from '@nestjs/mongoose'
+import { RedisModule }            from './redis/redis.module'
+import { MailModule }             from './mail/mail.module'
 import { ProductsModule }         from './products/products.module'
 import { CategoriesModule }       from './categories/categories.module'
 import { CartModule }             from './cart/cart.module'
@@ -18,16 +20,20 @@ import { HealthModule }           from './health/health.module'
 import { CategoryShowcaseModule } from './category-showcase/category-showcase.module'
 import { CacheModule }            from './common/cache.module'
 import { AdminModule }            from './admin/admin.module'
+import { WebhookModule }          from './webhooks/webhook.module'
+import { UploadsModule }          from './uploads/uploads.module'
 
 @Module({
   imports: [
     MongooseModule.forRootAsync({
       useFactory: () => ({ uri: process.env.MONGODB_URI }),
     }),
-    // Two tiers: a generous global limit (100 req/min) and a tighter auth limit
-    // (10 req/min) applied per-route via @Throttle() on the auth controller.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    // @Global() modules — available everywhere without importing
+    RedisModule,
+    MailModule,
     CacheModule,
+    // Feature modules
     AuthModule,
     UsersModule,
     ProductsModule,
@@ -43,14 +49,11 @@ import { AdminModule }            from './admin/admin.module'
     HealthModule,
     CategoryShowcaseModule,
     AdminModule,
+    WebhookModule,
+    UploadsModule,
   ],
   providers: [
-    // Register ThrottlerGuard globally so every route is rate-limited without
-    // needing an explicit @UseGuards() decorator on each controller.
-    {
-      provide:  APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

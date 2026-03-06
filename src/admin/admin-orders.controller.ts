@@ -9,7 +9,10 @@ import { Model }       from 'mongoose'
 import { RolesGuard }  from '../common/guards/roles.guard'
 import { Roles }       from '../common/decorators/roles.decorator'
 import { Order, OrderDocument } from '../database/order.schema'
-import { successResponse }      from '../common/api-utils'
+import { User,  UserDocument  } from '../database/user.schema'
+import { MailService }    from '../mail/mail.service'
+import { WebhookService } from '../webhooks/webhook.service'
+import { successResponse } from '../common/api-utils'
 
 @ApiTags('Admin — Orders')
 @ApiBearerAuth()
@@ -17,7 +20,12 @@ import { successResponse }      from '../common/api-utils'
 @Roles('admin')
 @Controller('admin/orders')
 export class AdminOrdersController {
-  constructor(@InjectModel(Order.name) private orderModel: Model<OrderDocument>) {}
+  constructor(
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    @InjectModel(User.name)  private userModel:  Model<UserDocument>,
+    private readonly mailService:    MailService,
+    private readonly webhookService: WebhookService,
+  ) {}
 
   @Get('stats')
   @ApiOperation({ summary: '[Admin] Get order count grouped by status' })
@@ -49,7 +57,6 @@ export class AdminOrdersController {
     if (status) filter.status = status
     if (userId) filter.userId = userId
     if (search && search.length <= 100) {
-      // Escape the search string to prevent ReDoS via pathological regex patterns.
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       filter.orderId = { $regex: escaped, $options: 'i' }
     }
@@ -90,8 +97,9 @@ export class AdminOrdersController {
     const order = await this.orderModel.findOne({ orderId })
     if (!order) throw new NotFoundException({ code: 'ORDER_NOT_FOUND', message: `Order ${orderId} not found` })
 
-    const now = new Date().toISOString()
-    order.status = body.status
+    const prevStatus = order.status
+    const now        = new Date().toISOString()
+    order.status     = body.status
     if (body.status === 'cancelled') order.paymentStatus = 'refunded'
     if (body.status === 'delivered') order.paymentStatus = 'paid'
     order.timeline.push({
@@ -100,6 +108,23 @@ export class AdminOrdersController {
       message:   body.message ?? `Status updated to ${body.status} by admin`,
     })
     await order.save()
+
+    // FEAT-06: send shipping notification when status transitions to 'shipped'
+    if (prevStatus !== 'shipped' && body.status === 'shipped') {
+      const user = await this.userModel.findById(order.userId).lean() as any
+      if (user) {
+        this.mailService.sendShippingNotification(user.email, user.firstName, order).catch(() => {})
+      }
+    }
+
+    // FEAT-05: fire webhook for status change
+    this.webhookService.dispatch('order.status_changed', {
+      orderId: order.orderId, previousStatus: prevStatus, newStatus: body.status,
+    }).catch(() => {})
+    if (body.status === 'shipped')   this.webhookService.dispatch('order.shipped',   { orderId: order.orderId }).catch(() => {})
+    if (body.status === 'delivered') this.webhookService.dispatch('order.delivered', { orderId: order.orderId }).catch(() => {})
+    if (body.status === 'cancelled') this.webhookService.dispatch('order.cancelled', { orderId: order.orderId }).catch(() => {})
+
     return successResponse(order)
   }
 
@@ -113,13 +138,26 @@ export class AdminOrdersController {
     const order = await this.orderModel.findOne({ orderId })
     if (!order) throw new NotFoundException({ code: 'ORDER_NOT_FOUND', message: `Order ${orderId} not found` })
 
-    const now = new Date().toISOString()
+    const wasShipped = order.status === 'shipped' || order.status === 'delivered'
+    const now        = new Date().toISOString()
     order.trackingNumber    = body.trackingNumber
     order.estimatedDelivery = body.estimatedDelivery ?? order.estimatedDelivery
-    if (order.status !== 'shipped' && order.status !== 'delivered') {
+
+    if (!wasShipped) {
       order.status = 'shipped'
       order.timeline.push({ status: 'shipped', timestamp: now, message: `Shipped with tracking number ${body.trackingNumber}` })
+
+      // FEAT-06: send shipping notification email when tracking is first added
+      const user = await this.userModel.findById(order.userId).lean() as any
+      if (user) {
+        this.mailService.sendShippingNotification(user.email, user.firstName, order).catch(() => {})
+      }
+
+      // FEAT-05: fire webhook
+      this.webhookService.dispatch('order.shipped',       { orderId: order.orderId, trackingNumber: body.trackingNumber }).catch(() => {})
+      this.webhookService.dispatch('order.status_changed', { orderId: order.orderId, previousStatus: 'processing', newStatus: 'shipped' }).catch(() => {})
     }
+
     await order.save()
     return successResponse(order)
   }

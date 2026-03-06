@@ -1,21 +1,14 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { PassportStrategy } from '@nestjs/passport'
-import { InjectModel }      from '@nestjs/mongoose'
 import { ExtractJwt, Strategy } from 'passport-jwt'
-import { Model } from 'mongoose'
-import { TokenBlacklist, TokenBlacklistDocument } from '../database/token-blacklist.schema'
+import { RedisService } from '../redis/redis.service'
 
-// JwtStrategy runs on every authenticated request.
-// Beyond the standard signature verification that Passport/JWT handles automatically,
-// we add a blacklist check here so that logged-out tokens are immediately rejected
-// even though they are still cryptographically valid until their expiry.
+// SEC-06 fix: blacklist check now hits Redis (O(1) in-memory lookup) instead
+// of MongoDB on every authenticated request. At 500 req/sec, this saves 500
+// MongoDB queries per second compared to the previous implementation.
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(
-    @InjectModel(TokenBlacklist.name)
-    private readonly blacklistModel: Model<TokenBlacklistDocument>,
-  ) {
-    // JWT_SECRET is guaranteed to be set because main.ts validates it at startup.
+  constructor(private readonly redis: RedisService) {
     super({
       jwtFromRequest:   ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -26,18 +19,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: any) {
     if (!payload?.sub) throw new UnauthorizedException()
 
-    // If the token has no jti it was issued before the blacklist was introduced;
-    // we still allow it to avoid locking out existing users on upgrade.
     if (payload.jti) {
-      const revoked = await this.blacklistModel.findOne({ jti: payload.jti }).lean()
-      if (revoked) {
-        throw new UnauthorizedException({
-          code:    'TOKEN_REVOKED',
-          message: 'This token has been revoked. Please log in again.',
-        })
-      }
+      const revoked = await this.redis.isTokenBlacklisted(payload.jti)
+      if (revoked) throw new UnauthorizedException({ code: 'TOKEN_REVOKED', message: 'Token has been revoked. Please log in again.' })
     }
 
-    return { userId: payload.sub, email: payload.email, role: payload.role }
+    // Include jti and exp so the logout handler can blacklist the token.
+    // Without these, req.user.jti / req.user.exp are undefined and the
+    // blacklist call in AuthService.logout() is silently skipped.
+    return {
+      userId: payload.sub,
+      email:  payload.email,
+      role:   payload.role,
+      jti:    payload.jti,   // unique token ID — used to blacklist on logout
+      exp:    payload.exp,   // Unix timestamp — used to set Redis TTL
+    }
   }
 }

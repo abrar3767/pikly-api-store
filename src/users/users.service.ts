@@ -92,32 +92,40 @@ export class UsersService {
   async updateAddress(userId: string, addressId: string, dto: UpdateAddressDto) {
     const user = await this.findOrFail(userId)
     const addresses = user.addresses ?? []
-    const idx = addresses.findIndex((a: any) => a.id === addressId)
-    if (idx === -1) {
+    const exists = addresses.some((a: any) => a.id === addressId)
+    if (!exists) {
       throw new NotFoundException({ code: 'ADDRESS_NOT_FOUND', message: 'Address not found' })
     }
 
-    // Build a $set map that targets only the specific array element.
-    const setFields: Record<string, any> = {}
-    const fields = ['label', 'street', 'city', 'state', 'zip', 'country', 'isDefault'] as const
-    for (const f of fields) {
-      if (dto[f] !== undefined) setFields[`addresses.${idx}.${f}`] = dto[f]
-    }
-
+    // Use MongoDB arrayFilters with an identifier so the update targets the
+    // specific element by its `id` field — not by array index. The previous
+    // implementation used findIndex() then `addresses.${idx}.field`, which
+    // is vulnerable to a race condition: if a concurrent request adds or
+    // removes an address between the read and the write, the wrong element
+    // gets updated. ArrayFilters are evaluated atomically by MongoDB.
     if (dto.isDefault === true) {
-      // Unset defaults on all other addresses atomically first.
+      // First atomically clear all defaults, then set the target one.
       await this.userModel.updateOne(
         { _id: userId },
         { $set: { 'addresses.$[].isDefault': false } },
       )
-      setFields[`addresses.${idx}.isDefault`] = true
     }
 
-    await this.userModel.findByIdAndUpdate(userId, { $set: setFields })
+    const setFields: Record<string, any> = {}
+    const fields = ['label', 'street', 'city', 'state', 'zip', 'country', 'isDefault'] as const
+    for (const f of fields) {
+      if (dto[f] !== undefined) setFields[`addresses.$[addr].${f}`] = dto[f]
+    }
 
-    // Return the updated address by re-reading the document.
+    await this.userModel.findByIdAndUpdate(
+      userId,
+      { $set: setFields },
+      { arrayFilters: [{ 'addr.id': addressId }] },
+    )
+
+    // Re-read and return the updated address by its stable id, not index.
     const updated = await this.userModel.findById(userId)
-    return (updated?.addresses ?? [])[idx]
+    return (updated?.addresses ?? []).find((a: any) => a.id === addressId) ?? null
   }
 
   async deleteAddress(userId: string, addressId: string) {
