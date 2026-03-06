@@ -37,34 +37,34 @@ export class CartService {
   }
 
   private computeSummary(cart: CartDocument) {
-    const items = cart.items ?? [];
+    const items = cart.items ?? []
     const subtotal = parseFloat(
-      items.reduce((s: number, i: any) => s + i.subtotal, 0).toFixed(2),
-    );
-    const shipping = subtotal === 0 ? 0 : subtotal >= 50 ? 0 : 9.99;
-    const tax = parseFloat((subtotal * 0.1).toFixed(2));
-    let discount = 0;
+      items.reduce((s: number, i: any) => s + (i.subtotal ?? 0), 0).toFixed(2),
+    )
+    const shipping = subtotal === 0 ? 0 : subtotal >= 50 ? 0 : 9.99
+    const tax = parseFloat((subtotal * 0.1).toFixed(2))
+    let discount = 0
 
-    const coupon = cart.coupon as any;
+    const coupon = cart.coupon as any
     if (coupon) {
       if (coupon.type === "percentage")
         discount = parseFloat(
           Math.min((subtotal * coupon.value) / 100, 999).toFixed(2),
-        );
+        )
       else if (coupon.type === "fixed")
-        discount = Math.min(coupon.value, subtotal);
-      else if (coupon.type === "free_shipping") discount = shipping;
-      coupon.discountValue = discount;
+        discount = Math.min(coupon.value ?? 0, subtotal)
+      else if (coupon.type === "free_shipping") discount = shipping
+      coupon.discountValue = discount
     }
 
     const total = parseFloat(
       Math.max(0, subtotal + shipping + tax - discount).toFixed(2),
-    );
+    )
     const savings = items.reduce(
-      (s: number, i: any) => s + (i.originalPrice - i.price) * i.quantity,
+      (s: number, i: any) => s + ((i.originalPrice ?? 0) - (i.price ?? 0)) * (i.quantity ?? 0),
       0,
-    );
-    const itemCount = items.reduce((s: number, i: any) => s + i.quantity, 0);
+    )
+    const itemCount = items.reduce((s: number, i: any) => s + (i.quantity ?? 0), 0)
 
     return {
       items,
@@ -86,7 +86,7 @@ export class CartService {
       isEmpty: items.length === 0,
       sessionId: cart.sessionId,
       userId: cart.userId,
-    };
+    }
   }
 
   async getCart(sessionId: string) {
@@ -95,48 +95,46 @@ export class CartService {
   }
 
   async addItem(dto: AddToCartDto) {
-    const cart = await this.getOrCreate(dto.sessionId);
-    const product = this.productsService.products.find(
-      (p) => p.id === dto.productId && p.isActive,
-    );
+    const cart = await this.getOrCreate(dto.sessionId)
+    const product = this.productsService.findProductById(dto.productId)
     if (!product)
       throw new NotFoundException({
         code: "PRODUCT_NOT_FOUND",
         message: "Product not found",
-      });
+      })
 
     const variant = dto.variantId
       ? product.variants?.find((v: any) => v.variantId === dto.variantId)
-      : null;
-    const stock = variant ? variant.stock : product.inventory.stock;
-    const priceDiff = variant?.priceDiff ?? 0;
-    const price = parseFloat((product.pricing.current + priceDiff).toFixed(2));
+      : null
+    const stock = variant ? variant.stock : (product.inventory?.stock ?? 0)
+    const priceDiff = variant?.priceDiff ?? 0
+    const price = parseFloat((product.pricing?.current ?? 0 + priceDiff).toFixed(2))
     const origPrice = parseFloat(
-      (product.pricing.original + priceDiff).toFixed(2),
-    );
+      (product.pricing?.original ?? 0 + priceDiff).toFixed(2),
+    )
 
-    const items = [...(cart.items ?? [])];
+    const items = [...(cart.items ?? [])]
     const existing = items.find(
       (i: any) =>
         i.productId === dto.productId &&
         i.variantId === (dto.variantId ?? null),
-    );
+    )
 
     if (existing) {
-      const newQty = existing.quantity + dto.quantity;
+      const newQty = existing.quantity + dto.quantity
       if (newQty > stock)
         throw new BadRequestException({
           code: "INSUFFICIENT_STOCK",
           message: `Only ${stock} units available`,
-        });
-      existing.quantity = newQty;
-      existing.subtotal = parseFloat((price * newQty).toFixed(2));
+        })
+      existing.quantity = newQty
+      existing.subtotal = parseFloat((price * newQty).toFixed(2))
     } else {
       if (dto.quantity > stock)
         throw new BadRequestException({
           code: "INSUFFICIENT_STOCK",
           message: `Only ${stock} units available`,
-        });
+        })
       items.push({
         productId: product.id,
         variantId: dto.variantId ?? null,
@@ -150,15 +148,15 @@ export class CartService {
         subtotal: parseFloat((price * dto.quantity).toFixed(2)),
         attributes: variant ? { color: variant.color, size: variant.size } : {},
         stock,
-      });
+      })
     }
 
     // userId is NOT set here. Cart-to-user association happens only at the
     // merge step (POST /cart/merge) after the user logs in, where userId is
     // taken from the verified JWT — never from a client-supplied DTO field.
-    cart.items = items;
-    await cart.save();
-    return this.computeSummary(cart);
+    cart.items = items
+    await cart.save()
+    return this.computeSummary(cart)
   }
 
   async updateItem(dto: UpdateCartDto) {

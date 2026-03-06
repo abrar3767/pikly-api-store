@@ -31,8 +31,8 @@ export class RecentlyViewedService {
     if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'User not found' })
     const ids   = user.recentlyViewed ?? []
     const items = ids
-      .map((id: string) => this.productsService.products.find(p => p.id === id && p.isActive))
-      .filter(Boolean)
+      .map((id: string) => this.productsService.findProductById(id))
+      .filter((p): p is any => p !== undefined)
       .map((p: any) => ({ id:p.id,slug:p.slug,title:p.title,brand:p.brand,media:p.media,pricing:p.pricing,ratings:p.ratings }))
     const paginated = smartPaginate(items, { page, limit, cursor })
     return {
