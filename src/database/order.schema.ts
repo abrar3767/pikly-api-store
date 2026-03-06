@@ -24,6 +24,14 @@ export class Order {
   @Prop({ type: [Object], default: [] }) timeline:         any[]
   @Prop({ default: null })               trackingNumber:   string
   @Prop()                                estimatedDelivery: string
+
+  // BUG FIX: guard flag to prevent duplicate shipping notification emails.
+  // Both updateStatus() and addTracking() can transition an order to 'shipped',
+  // and both fire a shipping email. Without this flag, if an admin first manually
+  // sets status to 'shipped' and then later adds a tracking number, the customer
+  // receives two identical shipping emails. This flag is set to true the first
+  // time the email is sent and checked before sending in both code paths.
+  @Prop({ default: false }) shippingEmailSent: boolean
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order)

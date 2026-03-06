@@ -35,14 +35,14 @@ export class CartService {
 
     const coupon = cart.coupon as any
     if (coupon) {
-      if (coupon.type === 'percentage')   discount = parseFloat(Math.min((subtotal * coupon.value) / 100, 999).toFixed(2))
-      else if (coupon.type === 'fixed')   discount = Math.min(coupon.value, subtotal)
+      if (coupon.type === 'percentage')        discount = parseFloat(Math.min((subtotal * coupon.value) / 100, 999).toFixed(2))
+      else if (coupon.type === 'fixed')        discount = Math.min(coupon.value, subtotal)
       else if (coupon.type === 'free_shipping') discount = shipping
       coupon.discountValue = discount
     }
 
-    const total    = parseFloat(Math.max(0, subtotal + shipping + tax - discount).toFixed(2))
-    const savings  = items.reduce((s: number, i: any) => s + (i.originalPrice - i.price) * i.quantity, 0)
+    const total     = parseFloat(Math.max(0, subtotal + shipping + tax - discount).toFixed(2))
+    const savings   = items.reduce((s: number, i: any) => s + (i.originalPrice - i.price) * i.quantity, 0)
     const itemCount = items.reduce((s: number, i: any) => s + i.quantity, 0)
 
     return {
@@ -69,9 +69,6 @@ export class CartService {
   async addItem(dto: AddToCartDto) {
     const cart = await this.getOrCreate(dto.sessionId)
 
-    // BUG-09 fix: query MongoDB directly for the stock check instead of reading
-    // from the in-memory cache, which can be stale under concurrent load.
-    // This guarantees the check reflects the real current inventory level.
     const product = this.productsService.products.find(p => p.id === dto.productId && p.isActive)
     if (!product) throw new NotFoundException({ code:'PRODUCT_NOT_FOUND', message:'Product not found' })
 
@@ -81,9 +78,6 @@ export class CartService {
     const origPrice = parseFloat((product.pricing.original + priceDiff).toFixed(2))
 
     // BUG-09 fix: check live stock from MongoDB, not from in-memory cache.
-    // Using the public getLiveProduct() method instead of the previous
-    // `(this.productsService as any).productModel` hack that accessed a private
-    // field via TypeScript type bypass — correct encapsulation, same result.
     const liveProduct = await this.productsService.getLiveProduct(dto.productId)
     const liveStock = liveProduct
       ? (variant ? (liveProduct.variants?.find((v: any) => v.variantId === dto.variantId)?.stock ?? liveProduct.inventory.stock) : liveProduct.inventory.stock)
@@ -125,10 +119,29 @@ export class CartService {
       items.splice(idx, 1)
     } else {
       const item = items[idx]
-      if (dto.quantity > item.stock) throw new BadRequestException({ code:'INSUFFICIENT_STOCK', message:`Only ${item.stock} units available` })
+
+      // BUG FIX: always fetch live stock from MongoDB instead of relying on
+      // item.stock which is the snapshot captured at addItem time. Between
+      // addItem and updateItem, another order may have consumed inventory,
+      // so the snapshot can be dangerously stale under concurrent load.
+      const liveProduct = await this.productsService.getLiveProduct(dto.productId)
+      const liveStock = liveProduct
+        ? (item.variantId
+            ? (liveProduct.variants?.find((v: any) => v.variantId === item.variantId)?.stock ?? liveProduct.inventory.stock)
+            : liveProduct.inventory.stock)
+        : item.stock  // fallback to snapshot only if product no longer exists in DB
+
+      if (dto.quantity > liveStock) {
+        throw new BadRequestException({ code:'INSUFFICIENT_STOCK', message:`Only ${liveStock} units available` })
+      }
+
+      // Keep the stored snapshot in sync so subsequent updateItem calls
+      // (within the same session before the next addItem) use the latest value.
+      item.stock    = liveStock
       item.quantity = dto.quantity
       item.subtotal = parseFloat((item.price * dto.quantity).toFixed(2))
     }
+
     cart.items = items
     await cart.save()
     return this.computeSummary(cart)

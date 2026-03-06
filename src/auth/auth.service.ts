@@ -147,11 +147,6 @@ export class AuthService {
   // (delete old, issue new), and returns a new access token + refresh token.
 
   async refreshTokens(rawRefreshToken: string) {
-    // The raw token is prefixed with userId (format: "<userId>.<hex>").
-    // Extract the userId so we can filter to only that user's tokens — typically
-    // 1-5 records — instead of scanning every non-expired token in the database
-    // and running bcrypt.compare against all of them (O(N×all_users) → catastrophic
-    // at scale since bcrypt is intentionally slow at ~100ms per compare).
     const dotIdx = rawRefreshToken.indexOf('.')
     if (dotIdx === -1) {
       throw new UnauthorizedException({ code: 'INVALID_REFRESH_TOKEN', message: 'Refresh token is invalid or expired' })
@@ -192,8 +187,6 @@ export class AuthService {
     }
     // Also invalidate the refresh token if provided
     if (rawRefreshToken) {
-      // Same userId-prefix trick as refreshTokens() — extract userId to scope
-      // the query to that user's tokens only, not a global table scan.
       const dotIdx = rawRefreshToken.indexOf('.')
       if (dotIdx !== -1) {
         const userId = rawRefreshToken.slice(0, dotIdx)
@@ -235,7 +228,13 @@ export class AuthService {
   // ── Reset password (SEC-03) ───────────────────────────────────────────────
 
   async resetPassword(dto: ResetPasswordDto) {
-    const record = await this.passwordResetTokenModel.findOne({ token: dto.token, used: false })
+    // BUG FIX: removed `used: false` from this query. The `used` field was
+    // dead code — it was never set to true anywhere, so the condition was
+    // always vacuously true and provided zero protection. Token reuse is
+    // correctly prevented by `deleteOne` at the end of this method, which
+    // removes the token so it cannot be found on a second call. The `used`
+    // field has also been removed from the schema.
+    const record = await this.passwordResetTokenModel.findOne({ token: dto.token })
     if (!record) throw new BadRequestException({ code: 'INVALID_TOKEN', message: 'Reset link is invalid or has expired' })
 
     const newHash = await bcrypt.hash(dto.newPassword, 12)

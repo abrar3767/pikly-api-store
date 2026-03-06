@@ -4,14 +4,17 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
 import { IsArray, IsString, IsIn, ArrayMinSize } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
-import { AuthGuard }       from '@nestjs/passport'
 import { InjectModel }     from '@nestjs/mongoose'
 import { Model }           from 'mongoose'
+import { AuthGuard }       from '@nestjs/passport'
 import { RolesGuard }      from '../common/guards/roles.guard'
 import { Roles }           from '../common/decorators/roles.decorator'
 import { ProductsService } from '../products/products.service'
-import { Order, OrderDocument } from '../database/order.schema'
-import { successResponse }      from '../common/api-utils'
+import { MailService }     from '../mail/mail.service'
+import { WebhookService }  from '../webhooks/webhook.service'
+import { Order,  OrderDocument } from '../database/order.schema'
+import { User,   UserDocument  } from '../database/user.schema'
+import { successResponse }       from '../common/api-utils'
 
 class BulkProductActionDto {
   @ApiProperty({ type: [String] }) @IsArray() @IsString({ each: true }) @ArrayMinSize(1) ids:    string[]
@@ -37,7 +40,10 @@ class BulkOrderActionDto {
 export class AdminBulkController {
   constructor(
     private readonly productsService: ProductsService,
+    private readonly mailService:     MailService,
+    private readonly webhookService:  WebhookService,
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    @InjectModel(User.name)  private userModel:  Model<UserDocument>,
   ) {}
 
   @Post('products')
@@ -73,11 +79,38 @@ export class AdminBulkController {
       try {
         const order = await this.orderModel.findOne({ orderId })
         if (!order) { results.push({ orderId, success:false, error:'Not found' }); continue }
-        order.status = newStatus
-        if (newStatus === 'cancelled')  order.paymentStatus = 'refunded'
-        if (newStatus === 'delivered')  order.paymentStatus = 'paid'
+
+        const prevStatus = order.status
+        order.status     = newStatus
+        if (newStatus === 'cancelled') order.paymentStatus = 'refunded'
+        if (newStatus === 'delivered') order.paymentStatus = 'paid'
         order.timeline.push({ status: newStatus, timestamp: now, message: `Bulk updated to ${newStatus} by admin` })
+
+        // BUG FIX: send shipping notification email for orders transitioning to
+        // 'shipped', respecting the shippingEmailSent guard so no customer ever
+        // gets a duplicate — consistent with the single-order updateStatus flow.
+        if (newStatus === 'shipped' && prevStatus !== 'shipped' && !order.shippingEmailSent) {
+          const user = await this.userModel.findById(order.userId).lean() as any
+          if (user) {
+            this.mailService.sendShippingNotification(user.email, user.firstName, order).catch(() => {})
+            order.shippingEmailSent = true
+          }
+        }
+
         await order.save()
+
+        // BUG FIX: fire the same webhooks that single-order updateStatus fires.
+        // Previously bulk updates were silent — registered webhook endpoints
+        // would miss every event triggered via a bulk action, breaking any
+        // third-party integration (warehouse systems, analytics, etc.)
+        this.webhookService.dispatch('order.status_changed', {
+          orderId: order.orderId, previousStatus: prevStatus, newStatus,
+        }).catch(() => {})
+
+        if (newStatus === 'shipped')   this.webhookService.dispatch('order.shipped',   { orderId: order.orderId }).catch(() => {})
+        if (newStatus === 'delivered') this.webhookService.dispatch('order.delivered', { orderId: order.orderId }).catch(() => {})
+        if (newStatus === 'cancelled') this.webhookService.dispatch('order.cancelled', { orderId: order.orderId }).catch(() => {})
+
         results.push({ orderId, success: true, newStatus })
       } catch (err: any) {
         results.push({ orderId, success: false, error: err.message })

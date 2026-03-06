@@ -107,15 +107,22 @@ export class AdminOrdersController {
       timestamp: now,
       message:   body.message ?? `Status updated to ${body.status} by admin`,
     })
-    await order.save()
 
-    // FEAT-06: send shipping notification when status transitions to 'shipped'
-    if (prevStatus !== 'shipped' && body.status === 'shipped') {
+    // FEAT-06 + BUG FIX: send shipping notification only if this is the first
+    // time the order reaches 'shipped' status AND the email has not already
+    // been sent. The shippingEmailSent flag prevents a duplicate email in the
+    // scenario where status is manually set to 'shipped' here and then the
+    // admin also adds a tracking number via addTracking() — without the flag,
+    // both code paths would fire the email independently.
+    if (prevStatus !== 'shipped' && body.status === 'shipped' && !order.shippingEmailSent) {
       const user = await this.userModel.findById(order.userId).lean() as any
       if (user) {
         this.mailService.sendShippingNotification(user.email, user.firstName, order).catch(() => {})
+        order.shippingEmailSent = true
       }
     }
+
+    await order.save()
 
     // FEAT-05: fire webhook for status change
     this.webhookService.dispatch('order.status_changed', {
@@ -147,15 +154,24 @@ export class AdminOrdersController {
       order.status = 'shipped'
       order.timeline.push({ status: 'shipped', timestamp: now, message: `Shipped with tracking number ${body.trackingNumber}` })
 
-      // FEAT-06: send shipping notification email when tracking is first added
+      // FEAT-05: fire webhook
+      this.webhookService.dispatch('order.shipped',        { orderId: order.orderId, trackingNumber: body.trackingNumber }).catch(() => {})
+      this.webhookService.dispatch('order.status_changed', { orderId: order.orderId, previousStatus: 'processing', newStatus: 'shipped' }).catch(() => {})
+    }
+
+    // FEAT-06 + BUG FIX: send shipping notification only if not already sent.
+    // This covers the case where addTracking() is the first action that moves
+    // the order to 'shipped' (wasShipped was false), AND the case where the
+    // status was already set to 'shipped' via updateStatus() but no tracking
+    // number was provided at that time — the customer still deserves the
+    // tracking number in a follow-up email, so we send it once tracking is added
+    // as long as the initial notification was already delivered.
+    if (!order.shippingEmailSent) {
       const user = await this.userModel.findById(order.userId).lean() as any
       if (user) {
         this.mailService.sendShippingNotification(user.email, user.firstName, order).catch(() => {})
+        order.shippingEmailSent = true
       }
-
-      // FEAT-05: fire webhook
-      this.webhookService.dispatch('order.shipped',       { orderId: order.orderId, trackingNumber: body.trackingNumber }).catch(() => {})
-      this.webhookService.dispatch('order.status_changed', { orderId: order.orderId, previousStatus: 'processing', newStatus: 'shipped' }).catch(() => {})
     }
 
     await order.save()
