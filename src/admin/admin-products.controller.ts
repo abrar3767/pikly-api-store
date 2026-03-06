@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common'
+import {
+  Controller, Get, Post, Patch, Delete,
+  Body, Param, Query, UseGuards, HttpCode, HttpStatus, NotFoundException,
+} from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger'
-import { AuthGuard }     from '@nestjs/passport'
-import { RolesGuard }    from '../common/guards/roles.guard'
-import { Roles }         from '../common/decorators/roles.decorator'
+import { AuthGuard }      from '@nestjs/passport'
+import { RolesGuard }     from '../common/guards/roles.guard'
+import { Roles }          from '../common/decorators/roles.decorator'
 import { ProductsService } from '../products/products.service'
 import { successResponse } from '../common/api-utils'
 
@@ -16,11 +19,20 @@ export class AdminProductsController {
 
   @Get()
   @ApiOperation({ summary: '[Admin] List all products with search and pagination' })
-  @ApiQuery({ name:'page', required:false }) @ApiQuery({ name:'limit', required:false })
-  @ApiQuery({ name:'search', required:false }) @ApiQuery({ name:'isActive', required:false })
-  async findAll(@Query('page') page?: number, @Query('limit') limit?: number, @Query('search') search?: string, @Query('isActive') isActive?: string) {
+  @ApiQuery({ name: 'page',     required: false })
+  @ApiQuery({ name: 'limit',    required: false })
+  @ApiQuery({ name: 'search',   required: false })
+  @ApiQuery({ name: 'isActive', required: false })
+  async findAll(
+    @Query('page')     page?:     number,
+    @Query('limit')    limit?:    number,
+    @Query('search')   search?:   string,
+    @Query('isActive') isActive?: string,
+  ) {
     return successResponse(await this.productsService.adminFindAll({
-      page: page ? Number(page) : 1, limit: limit ? Number(limit) : 20, search,
+      page:     page     ? Number(page)  : 1,
+      limit:    limit    ? Number(limit) : 20,
+      search,
       isActive: isActive !== undefined ? isActive === 'true' : undefined,
     }))
   }
@@ -33,24 +45,25 @@ export class AdminProductsController {
 
   @Patch(':id')
   @ApiOperation({ summary: '[Admin] Update product by id' })
-  @ApiParam({ name:'id' })
+  @ApiParam({ name: 'id' })
   async update(@Param('id') id: string, @Body() body: any) {
     return successResponse(await this.productsService.adminUpdate(id, body))
   }
 
   @Patch(':id/toggle')
   @ApiOperation({ summary: '[Admin] Toggle product active/inactive' })
-  @ApiParam({ name:'id' })
+  @ApiParam({ name: 'id' })
   async toggle(@Param('id') id: string) {
-    const current = this.productsService.products.find(p => p.id === id)
-    if (!current) return successResponse({ error: `Product ${id} not found` })
+    const current = this.productsService.findProductById(id)
+      ?? this.productsService.products.find(p => p.id === id) // include inactive
+    if (!current) throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${id}" not found` })
     return successResponse(await this.productsService.adminUpdate(id, { isActive: !current.isActive }))
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '[Admin] Delete a product permanently' })
-  @ApiParam({ name:'id' })
+  @ApiParam({ name: 'id' })
   async remove(@Param('id') id: string) {
     return successResponse(await this.productsService.adminDelete(id))
   }

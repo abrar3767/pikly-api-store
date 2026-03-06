@@ -9,9 +9,10 @@ export class CouponsController {
   constructor(private readonly couponsService: CouponsService) {}
 
   @Get('validate')
-  @ApiOperation({ summary: 'Validate a coupon code' })
+  @ApiOperation({ summary: 'Validate a coupon code and preview the discount' })
   @ApiQuery({ name: 'code', required: true })
-  validate(@Query('code') code: string) {
-    return successResponse(this.couponsService.validate(code))
+  async validate(@Query('code') code: string) {
+    const data = await this.couponsService.validate(code)
+    return successResponse(data)
   }
 }

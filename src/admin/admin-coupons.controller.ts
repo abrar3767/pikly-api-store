@@ -1,4 +1,8 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common'
+import {
+  Controller, Get, Post, Patch, Delete,
+  Param, Query, Body, UseGuards, HttpCode, HttpStatus,
+  NotFoundException, BadRequestException,
+} from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger'
 import { AuthGuard }   from '@nestjs/passport'
 import { InjectModel } from '@nestjs/mongoose'
@@ -18,44 +22,61 @@ export class AdminCouponsController {
 
   @Get()
   @ApiOperation({ summary: '[Admin] List all coupons (including inactive and expired)' })
-  @ApiQuery({ name:'isActive', required:false })
+  @ApiQuery({ name: 'isActive', required: false })
   async findAll(@Query('isActive') isActive?: string) {
     const filter: any = {}
     if (isActive !== undefined) filter.isActive = isActive === 'true'
-    return successResponse(await this.couponModel.find(filter).sort({ createdAt:-1 }).lean())
+    return successResponse(await this.couponModel.find(filter).sort({ createdAt: -1 }).lean())
   }
 
   @Post()
   @ApiOperation({ summary: '[Admin] Create a new coupon' })
   async create(@Body() body: any) {
-    const id = `coup_${body.code?.toLowerCase().replace(/[^a-z0-9]/g,'_')}_${Date.now()}`
     const existing = await this.couponModel.findOne({ code: body.code?.toUpperCase() })
-    if (existing) return successResponse(null, { message: `Coupon "${body.code}" already exists` })
+    if (existing) {
+      throw new BadRequestException({
+        code:    'DUPLICATE_COUPON',
+        message: `Coupon "${body.code}" already exists`,
+      })
+    }
+    const id = `coup_${body.code?.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}`
     return successResponse(await this.couponModel.create({
-      id, code:body.code?.toUpperCase(), type:body.type, value:body.value,
-      minOrderAmount:body.minOrderAmount??0, maxDiscount:body.maxDiscount??null,
-      usageLimit:body.usageLimit??1000, usedCount:0,
-      applicableCategories:body.applicableCategories??[], applicableProducts:body.applicableProducts??[],
-      expiresAt:body.expiresAt, isActive:body.isActive??true,
+      id,
+      code:                 body.code?.toUpperCase(),
+      type:                 body.type,
+      value:                body.value,
+      minOrderAmount:       body.minOrderAmount       ?? 0,
+      maxDiscount:          body.maxDiscount          ?? null,
+      usageLimit:           body.usageLimit           ?? 1000,
+      usedCount:            0,
+      applicableCategories: body.applicableCategories ?? [],
+      applicableProducts:   body.applicableProducts   ?? [],
+      expiresAt:            body.expiresAt,
+      isActive:             body.isActive             ?? true,
     }))
   }
 
   @Patch(':code')
   @ApiOperation({ summary: '[Admin] Update a coupon by code' })
-  @ApiParam({ name:'code' })
+  @ApiParam({ name: 'code' })
   async update(@Param('code') code: string, @Body() body: any) {
-    const { usedCount, id, code:_code, ...safeBody } = body
-    const coupon = await this.couponModel.findOneAndUpdate({ code:code.toUpperCase() }, { $set:safeBody }, { new:true })
-    if (!coupon) return successResponse(null, { message: `Coupon "${code}" not found` })
+    // Prevent overwriting immutable fields via the update body.
+    const { usedCount, id, code: _code, ...safeBody } = body
+    const coupon = await this.couponModel.findOneAndUpdate(
+      { code: code.toUpperCase() },
+      { $set: safeBody },
+      { new: true },
+    )
+    if (!coupon) throw new NotFoundException({ code: 'COUPON_NOT_FOUND', message: `Coupon "${code}" not found` })
     return successResponse(coupon)
   }
 
   @Patch(':code/toggle')
   @ApiOperation({ summary: '[Admin] Toggle coupon active/inactive' })
-  @ApiParam({ name:'code' })
+  @ApiParam({ name: 'code' })
   async toggle(@Param('code') code: string) {
-    const coupon = await this.couponModel.findOne({ code:code.toUpperCase() })
-    if (!coupon) return successResponse(null, { message: `Coupon "${code}" not found` })
+    const coupon = await this.couponModel.findOne({ code: code.toUpperCase() })
+    if (!coupon) throw new NotFoundException({ code: 'COUPON_NOT_FOUND', message: `Coupon "${code}" not found` })
     coupon.isActive = !coupon.isActive
     await coupon.save()
     return successResponse(coupon)
@@ -64,10 +85,10 @@ export class AdminCouponsController {
   @Delete(':code')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '[Admin] Delete a coupon permanently' })
-  @ApiParam({ name:'code' })
+  @ApiParam({ name: 'code' })
   async remove(@Param('code') code: string) {
-    const coupon = await this.couponModel.findOneAndDelete({ code:code.toUpperCase() })
-    if (!coupon) return successResponse(null, { message: `Coupon "${code}" not found` })
-    return successResponse({ deleted:true, code:code.toUpperCase() })
+    const coupon = await this.couponModel.findOneAndDelete({ code: code.toUpperCase() })
+    if (!coupon) throw new NotFoundException({ code: 'COUPON_NOT_FOUND', message: `Coupon "${code}" not found` })
+    return successResponse({ deleted: true, code: code.toUpperCase() })
   }
 }

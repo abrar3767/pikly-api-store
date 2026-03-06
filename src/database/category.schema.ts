@@ -15,11 +15,13 @@ export class Category {
   @Prop({ default: '' }) description: string
   @Prop({ default: 0 }) productCount: number
   @Prop({ default: true }) isActive: boolean
+  // Single canonical "featured" flag — removed the duplicate `featured` field
+  // that previously co-existed with `isFeatured` inconsistently.
   @Prop({ default: false }) isFeatured: boolean
-  @Prop({ default: false }) featured: boolean
   @Prop({ default: 0 }) sortOrder: number
   @Prop({ type: [Object], default: [] }) filters: any[]
 }
 
 export const CategorySchema = SchemaFactory.createForClass(Category)
 CategorySchema.index({ isActive: 1, isFeatured: 1 })
+CategorySchema.index({ parentId: 1 })

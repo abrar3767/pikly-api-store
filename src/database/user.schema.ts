@@ -1,51 +1,55 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { Document } from 'mongoose'
 
-export type UserDocument = User & Document;
+export type UserDocument = User & Document
 
 @Schema({ timestamps: true })
 export class User {
   @Prop({ required: true, unique: true, lowercase: true })
-  email: string;
+  email: string
 
   @Prop({ required: true })
-  passwordHash: string;
+  passwordHash: string
 
   @Prop({ required: true })
-  firstName: string;
+  firstName: string
 
   @Prop({ required: true })
-  lastName: string;
+  lastName: string
 
   @Prop({ default: null })
-  avatar: string;
+  avatar: string
 
   @Prop({ default: null })
-  phone: string;
+  phone: string
 
-  @Prop({ default: "customer" })
-  role: string;
+  @Prop({ default: 'customer', enum: ['customer', 'admin'] })
+  role: string
 
+  // Stored as raw objects — validated at the DTO layer before saving
   @Prop({ type: [Object], default: [] })
-  addresses: any[];
+  addresses: any[]
 
   @Prop({ type: [String], default: [] })
-  wishlist: string[];
+  wishlist: string[]
 
   @Prop({ type: [String], default: [] })
-  recentlyViewed: string[];
+  recentlyViewed: string[]
 
   @Prop({ default: 0 })
-  loyaltyPoints: number;
+  loyaltyPoints: number
 
   @Prop({ default: true })
-  isVerified: boolean;
+  isVerified: boolean
 
   @Prop({ default: true })
-  isActive: boolean;
+  isActive: boolean
 
-  @Prop({ default: null })
-  lastLogin: string;
+  // Stored as a native Date, not a string, so MongoDB can index and query it
+  @Prop({ type: Date, default: null })
+  lastLogin: Date
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
+export const UserSchema = SchemaFactory.createForClass(User)
+// Email is already unique (declared on the field), add a generic query index
+UserSchema.index({ role: 1, isActive: 1 })

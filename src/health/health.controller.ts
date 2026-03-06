@@ -1,7 +1,10 @@
-import { Controller, Get } from '@nestjs/common'
-import { ApiTags, ApiOperation } from '@nestjs/swagger'
-import { InjectModel } from '@nestjs/mongoose'
-import { Model }       from 'mongoose'
+import { Controller, Get, UseGuards } from '@nestjs/common'
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
+import { AuthGuard }    from '@nestjs/passport'
+import { InjectModel }  from '@nestjs/mongoose'
+import { Model }        from 'mongoose'
+import { RolesGuard }   from '../common/guards/roles.guard'
+import { Roles }        from '../common/decorators/roles.decorator'
 import { successResponse }    from '../common/api-utils'
 import { ProductsService }    from '../products/products.service'
 import { CategoriesService }  from '../categories/categories.service'
@@ -13,7 +16,7 @@ import { Banner, BannerDocument } from '../database/banner.schema'
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
-  // Cache counts for 30s so a monitor pinging every 5s doesn't hammer MongoDB
+  // Count cache so a monitor pinging every few seconds doesn't hammer MongoDB.
   private countCache: { data: any; expiresAt: number } | null = null
 
   constructor(
@@ -25,9 +28,24 @@ export class HealthController {
     @InjectModel(Banner.name) private bannerModel: Model<BannerDocument>,
   ) {}
 
+  // Public endpoint — returns only the minimal liveness signal.
+  // This is safe for external monitors (UptimeRobot, Pingdom, etc.) to hit
+  // without exposing any system internals.
   @Get()
-  @ApiOperation({ summary: 'API health check with data status' })
-  async check() {
+  @ApiOperation({ summary: 'Liveness check — public, no secrets exposed' })
+  ping() {
+    return successResponse({ status: 'ok', timestamp: new Date().toISOString() })
+  }
+
+  // Admin-only endpoint — returns full system details.
+  // Heap memory, record counts, and the runtime environment name must not be
+  // visible to the public because they help attackers profile the system.
+  @Get('detail')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('admin')
+  @ApiOperation({ summary: '[Admin] Detailed health check — heap, counts, uptime' })
+  async detail() {
     const now = Date.now()
 
     if (!this.countCache || this.countCache.expiresAt < now) {

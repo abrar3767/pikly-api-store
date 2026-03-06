@@ -1,18 +1,25 @@
-import { IsString, IsOptional, IsArray, ValidateNested } from 'class-validator'
-import { Type } from 'class-transformer'
+import { IsString, IsOptional } from 'class-validator'
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
-export class OrderItemDto {
-  @ApiProperty() @IsString() productId:  string
-  @ApiPropertyOptional() @IsOptional() @IsString() variantId?: string
-  @ApiProperty() quantity: number
-}
-
+// userId has been removed from this DTO intentionally.
+// It is now derived from the authenticated JWT in the controller (req.user.userId)
+// so a user cannot place or read orders on behalf of another user by
+// supplying a different userId in the request body.
 export class CreateOrderDto {
-  @ApiProperty() @IsString() userId:    string
-  @ApiProperty() @IsString() sessionId: string
-  @ApiProperty() @IsString() addressId: string
-  @ApiProperty() @IsString() paymentMethod: string
-  @ApiPropertyOptional() @IsOptional() @IsString() couponCode?: string
-  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string
+  @ApiProperty({ description: 'Cart session ID containing the items to order' })
+  @IsString()
+  sessionId: string
+
+  @ApiProperty({ description: 'Address ID from the user\'s saved addresses' })
+  @IsString()
+  addressId: string
+
+  @ApiProperty({ description: 'Payment method: card | cod | wallet' })
+  @IsString()
+  paymentMethod: string
+
+  @ApiPropertyOptional({ description: 'Optional order notes' })
+  @IsOptional()
+  @IsString()
+  notes?: string
 }

@@ -1,53 +1,66 @@
-import { Controller, Post, Get, Patch, Body, Param, Query } from '@nestjs/common'
-import { ApiTags, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger'
-import { OrdersService }   from './orders.service'
-import { CreateOrderDto }  from './dto/create-order.dto'
+import {
+  Controller, Post, Get, Patch,
+  Body, Param, Query, UseGuards, Request,
+} from '@nestjs/common'
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger'
+import { AuthGuard }    from '@nestjs/passport'
+import { OrdersService }  from './orders.service'
+import { CreateOrderDto } from './dto/create-order.dto'
 import { successResponse } from '../common/api-utils'
 
+// Every route requires a valid JWT. userId is always derived from req.user.userId
+// (the verified token payload) — never from a query param or request body.
+// This prevents one user from reading or cancelling another user's orders.
 @ApiTags('Orders')
+@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt'))
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post('create')
-  @ApiOperation({ summary: 'Create order from cart' })
-  create(@Body() dto: CreateOrderDto) {
-    return successResponse(this.ordersService.createOrder(dto))
+  @ApiOperation({ summary: 'Create order from cart (requires auth)' })
+  async create(@Request() req: any, @Body() dto: CreateOrderDto) {
+    const data = await this.ordersService.createOrder(req.user.userId, dto)
+    return successResponse(data)
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all orders for a user' })
-  @ApiQuery({ name: 'userId', required: true })
+  @ApiOperation({ summary: 'Get all orders for the authenticated user' })
   @ApiQuery({ name: 'page',   required: false })
   @ApiQuery({ name: 'limit',  required: false })
   @ApiQuery({ name: 'status', required: false, description: 'pending | confirmed | processing | shipped | delivered | cancelled' })
-  getUserOrders(
-    @Query('userId') userId: string,
-    @Query('page')   page?:  number,
-    @Query('limit')  limit?: number,
+  async getUserOrders(
+    @Request() req: any,
+    @Query('page')   page?:   number,
+    @Query('limit')  limit?:  number,
     @Query('status') status?: string,
   ) {
-    return successResponse(this.ordersService.getUserOrders(userId, { page, limit, status }))
+    const data = await this.ordersService.getUserOrders(req.user.userId, { page, limit, status })
+    return successResponse(data)
   }
 
   @Get(':orderId')
-  @ApiOperation({ summary: 'Get single order details' })
+  @ApiOperation({ summary: 'Get single order details (only your own orders)' })
   @ApiParam({ name: 'orderId' })
-  getOrder(@Param('orderId') orderId: string) {
-    return successResponse(this.ordersService.getOrder(orderId))
+  async getOrder(@Request() req: any, @Param('orderId') orderId: string) {
+    const data = await this.ordersService.getOrder(orderId, req.user.userId)
+    return successResponse(data)
   }
 
   @Patch(':orderId/cancel')
-  @ApiOperation({ summary: 'Cancel an order (only pending/confirmed)' })
+  @ApiOperation({ summary: 'Cancel an order (only pending/confirmed, only your own)' })
   @ApiParam({ name: 'orderId' })
-  cancelOrder(@Param('orderId') orderId: string) {
-    return successResponse(this.ordersService.cancelOrder(orderId))
+  async cancelOrder(@Request() req: any, @Param('orderId') orderId: string) {
+    const data = await this.ordersService.cancelOrder(orderId, req.user.userId)
+    return successResponse(data)
   }
 
   @Get(':orderId/track')
-  @ApiOperation({ summary: 'Track order status with timeline' })
+  @ApiOperation({ summary: 'Track order status with timeline (only your own orders)' })
   @ApiParam({ name: 'orderId' })
-  trackOrder(@Param('orderId') orderId: string) {
-    return successResponse(this.ordersService.trackOrder(orderId))
+  async trackOrder(@Request() req: any, @Param('orderId') orderId: string) {
+    const data = await this.ordersService.trackOrder(orderId, req.user.userId)
+    return successResponse(data)
   }
 }

@@ -1,4 +1,7 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common'
+import {
+  Controller, Get, Post, Patch, Delete,
+  Body, Param, Query, UseGuards, HttpCode, HttpStatus, NotFoundException,
+} from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger'
 import { AuthGuard }       from '@nestjs/passport'
 import { RolesGuard }      from '../common/guards/roles.guard'
@@ -16,10 +19,10 @@ export class AdminCategoriesController {
 
   @Get()
   @ApiOperation({ summary: '[Admin] List all categories (flat, includes inactive)' })
-  @ApiQuery({ name:'isActive', required:false })
+  @ApiQuery({ name: 'isActive', required: false })
   findAll(@Query('isActive') isActive?: string) {
     let cats = this.categoriesService.categories
-    if (isActive !== undefined) cats = cats.filter((c:any) => c.isActive === (isActive === 'true'))
+    if (isActive !== undefined) cats = cats.filter((c: any) => c.isActive === (isActive === 'true'))
     return successResponse(cats)
   }
 
@@ -31,24 +34,24 @@ export class AdminCategoriesController {
 
   @Patch(':id')
   @ApiOperation({ summary: '[Admin] Update category by id' })
-  @ApiParam({ name:'id' })
+  @ApiParam({ name: 'id' })
   async update(@Param('id') id: string, @Body() body: any) {
     return successResponse(await this.categoriesService.adminUpdate(id, body))
   }
 
   @Patch(':id/toggle')
   @ApiOperation({ summary: '[Admin] Toggle category active/inactive' })
-  @ApiParam({ name:'id' })
+  @ApiParam({ name: 'id' })
   async toggle(@Param('id') id: string) {
-    const current = this.categoriesService.categories.find((c:any) => c.id === id)
-    if (!current) return successResponse({ error: `Category ${id} not found` })
+    const current = this.categoriesService.categories.find((c: any) => c.id === id)
+    if (!current) throw new NotFoundException({ code: 'CATEGORY_NOT_FOUND', message: `Category "${id}" not found` })
     return successResponse(await this.categoriesService.adminUpdate(id, { isActive: !current.isActive }))
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '[Admin] Delete a category permanently' })
-  @ApiParam({ name:'id' })
+  @ApiParam({ name: 'id' })
   async remove(@Param('id') id: string) {
     return successResponse(await this.categoriesService.adminDelete(id))
   }
