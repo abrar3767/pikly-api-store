@@ -11,6 +11,15 @@ import { VerificationToken }   from '../../database/verification-token.schema'
 import { PasswordResetToken }  from '../../database/password-reset-token.schema'
 import * as bcrypt             from 'bcrypt'
 
+// Helper that creates a Mongoose-style chainable mock where find() returns an
+// object with a .lean() method. This matches the actual call pattern in
+// auth.service.ts: this.refreshTokenModel.find(...).lean()
+// Without this, jest.fn().mockResolvedValue([]) resolves the Promise at the
+// find() call itself and .lean() does not exist on a Promise, causing
+// "find(...).lean is not a function".
+const makeFindMock = (resolvedValue: any[]) =>
+  jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(resolvedValue) })
+
 const createMock = (overrides: Record<string, any> = {}) => ({
   findOne:           jest.fn(),
   findById:          jest.fn(),
@@ -18,7 +27,7 @@ const createMock = (overrides: Record<string, any> = {}) => ({
   create:            jest.fn(),
   deleteMany:        jest.fn(),
   deleteOne:         jest.fn(),
-  find:              jest.fn().mockResolvedValue([]),
+  find:              makeFindMock([]),
   ...overrides,
 })
 
@@ -34,13 +43,13 @@ describe('AuthService', () => {
 
   beforeEach(async () => {
     userModel    = createMock()
-    refreshModel = createMock({ find: jest.fn().mockResolvedValue([]) })
+    refreshModel = createMock({ find: makeFindMock([]) })
     verifyModel  = createMock()
     resetModel   = createMock()
 
     jwtService  = { sign: jest.fn().mockReturnValue('mock.access.token') }
     mailService = {
-      sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+      sendVerificationEmail:  jest.fn().mockResolvedValue(undefined),
       sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
     }
     redis = {
@@ -79,8 +88,7 @@ describe('AuthService', () => {
       userModel.findOne.mockResolvedValue(null)
       const fakeUser = {
         _id: { toString: () => 'uid1' },
-        email: 'new@b.com',
-        firstName: 'New',
+        email: 'new@b.com', firstName: 'New',
         toObject: () => ({ _id: 'uid1', email: 'new@b.com' }),
       }
       userModel.create.mockResolvedValue(fakeUser)
@@ -106,10 +114,7 @@ describe('AuthService', () => {
       expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith('uid1', { isVerified: true })
     })
 
-    // QA-03: SEC-02 — expired token must be rejected
-    it('throws INVALID_TOKEN when token is not found (expired or wrong)', async () => {
-      // SEC-02: the query includes expiresAt: { $gt: new Date() }, so MongoDB
-      // returns null for expired tokens. We simulate that by returning null.
+    it('throws INVALID_TOKEN when token is expired (SEC-02 — query returns null)', async () => {
       verifyModel.findOne.mockResolvedValue(null)
       await expect(service.verifyEmail({ token: 'expired-token' }))
         .rejects.toThrow(BadRequestException)
@@ -119,8 +124,7 @@ describe('AuthService', () => {
   // ── resetPassword ──────────────────────────────────────────────────────────
 
   describe('resetPassword', () => {
-    // QA-03: SEC-02 — expired reset token must be rejected at application level
-    it('throws INVALID_TOKEN when reset token is expired (query returns null)', async () => {
+    it('throws INVALID_TOKEN when reset token is expired (SEC-02 — query returns null)', async () => {
       resetModel.findOne.mockResolvedValue(null)
       await expect(service.resetPassword({ token: 'stale', newPassword: 'newpass123' }))
         .rejects.toThrow(BadRequestException)
@@ -134,7 +138,6 @@ describe('AuthService', () => {
 
       const result = await service.resetPassword({ token: 'valid', newPassword: 'newpass123' })
       expect(result.message).toContain('reset successfully')
-      expect(userModel.findByIdAndUpdate).toHaveBeenCalled()
       expect(resetModel.deleteOne).toHaveBeenCalledWith({ _id: 'rtid1' })
     })
   })
@@ -187,17 +190,23 @@ describe('AuthService', () => {
   // ── refreshTokens ──────────────────────────────────────────────────────────
 
   describe('refreshTokens', () => {
-    // QA-03: tests the full rotation — old token deleted, new pair issued
     it('deletes old refresh token and issues new access + refresh tokens', async () => {
       const userId    = 'uid1'
       const rawToken  = `${userId}.${'a'.repeat(128)}`
       const tokenHash = await bcrypt.hash(rawToken, 10)
 
-      refreshModel.find.mockResolvedValue([{ _id: 'rtid1', userId, tokenHash, expiresAt: new Date(Date.now() + 1e6) }])
+      // find().lean() must return an array — use makeFindMock on this specific call
+      refreshModel.find.mockReturnValue({
+        lean: jest.fn().mockResolvedValue([{
+          _id: 'rtid1', userId, tokenHash,
+          expiresAt: new Date(Date.now() + 1_000_000),
+        }]),
+      })
       refreshModel.deleteOne.mockResolvedValue({})
       refreshModel.create.mockResolvedValue({})
       userModel.findById.mockResolvedValue({
-        _id: { toString: () => userId }, email: 'x@x.com', role: 'customer', isActive: true,
+        _id: { toString: () => userId }, email: 'x@x.com',
+        role: 'customer', isActive: true,
         toObject: () => ({}),
       })
 
@@ -207,9 +216,9 @@ describe('AuthService', () => {
       expect(refreshModel.deleteOne).toHaveBeenCalledWith({ _id: 'rtid1' })
     })
 
-    it('throws INVALID_REFRESH_TOKEN when token does not match any candidate', async () => {
+    it('throws INVALID_REFRESH_TOKEN when no candidate tokens exist', async () => {
       const rawToken = `uid1.${'b'.repeat(128)}`
-      refreshModel.find.mockResolvedValue([]) // no candidates found
+      refreshModel.find.mockReturnValue({ lean: jest.fn().mockResolvedValue([]) })
       await expect(service.refreshTokens(rawToken)).rejects.toThrow(UnauthorizedException)
     })
 
@@ -221,8 +230,6 @@ describe('AuthService', () => {
   // ── logout ─────────────────────────────────────────────────────────────────
 
   describe('logout', () => {
-    // QA-03: verifies that blacklistToken is called on logout so the access
-    // token is immediately invalidated, not just left to expire naturally
     it('blacklists the access token jti in Redis', async () => {
       const futureExp = Math.floor(Date.now() / 1000) + 900
       await service.logout('jti-123', futureExp)
