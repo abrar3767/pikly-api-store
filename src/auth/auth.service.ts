@@ -46,7 +46,6 @@ export class AuthService {
     return { ...rest, id: obj._id?.toString() }
   }
 
-  // Signs a short-lived (15min) access token with a unique jti for revocation.
   private signAccess(user: any): string {
     return this.jwtService.sign({
       sub:   user._id.toString(),
@@ -56,11 +55,6 @@ export class AuthService {
     })
   }
 
-  // Creates and persists a long-lived (30 day) refresh token.
-  // The raw token is prefixed with userId so lookups can be scoped to one
-  // user's tokens (typically 1-5), avoiding a full-table bcrypt scan.
-  // Format: "<userId>.<64-byte-hex>"  — the dot separator is safe because
-  // MongoDB ObjectIds are hex-only and random bytes are hex-only.
   private async createRefreshToken(userId: string): Promise<string> {
     const raw  = `${userId}.${crypto.randomBytes(64).toString('hex')}`
     const hash = await bcrypt.hash(raw, 10)
@@ -79,13 +73,11 @@ export class AuthService {
     const user = await this.userModel.create({
       email: dto.email.toLowerCase(), passwordHash: hash,
       firstName: dto.firstName, lastName: dto.lastName,
-      // SEC-02 fix: isVerified starts false — user must confirm email
       isVerified: false, isActive: true, role: 'customer',
       addresses: [], wishlist: [], recentlyViewed: [], loyaltyPoints: 0,
       lastLogin: new Date(),
     })
 
-    // Send verification email
     const verToken = crypto.randomBytes(32).toString('hex')
     await this.verificationTokenModel.create({
       userId:    user._id.toString(),
@@ -97,11 +89,21 @@ export class AuthService {
     return { message: 'Registration successful. Please check your email to verify your account.' }
   }
 
-  // ── Verify email (SEC-02) ─────────────────────────────────────────────────
+  // ── Verify email ──────────────────────────────────────────────────────────
+  // SEC-02: the query now includes expiresAt: { $gt: new Date() } so application
+  // code enforces expiry immediately, regardless of whether MongoDB's TTL index
+  // cleanup has run yet. Previously a token could be used for up to ~60 seconds
+  // after its expiry time during the TTL cleanup window.
 
   async verifyEmail(dto: VerifyEmailDto) {
-    const record = await this.verificationTokenModel.findOne({ token: dto.token })
-    if (!record) throw new BadRequestException({ code: 'INVALID_TOKEN', message: 'Verification link is invalid or has expired' })
+    const record = await this.verificationTokenModel.findOne({
+      token:     dto.token,
+      expiresAt: { $gt: new Date() },   // SEC-02: explicit expiry check
+    })
+    if (!record) throw new BadRequestException({
+      code:    'INVALID_TOKEN',
+      message: 'Verification link is invalid or has expired',
+    })
 
     await this.userModel.findByIdAndUpdate(record.userId, { isVerified: true })
     await this.verificationTokenModel.deleteOne({ _id: record._id })
@@ -111,14 +113,13 @@ export class AuthService {
   // ── Login ─────────────────────────────────────────────────────────────────
 
   async login(dto: LoginDto) {
-    // SEC-05: check per-account failure count before any DB user lookup
     const failures = await this.redis.getLoginFailures(dto.email)
     if (failures >= 10) throw new UnauthorizedException({
-      code: 'ACCOUNT_LOCKED',
+      code:    'ACCOUNT_LOCKED',
       message: 'Too many failed attempts. Account locked for 15 minutes.',
     })
 
-    const user = await this.userModel.findOne({ email: dto.email.toLowerCase() })
+    const user  = await this.userModel.findOne({ email: dto.email.toLowerCase() })
     const valid = user ? await bcrypt.compare(dto.password, user.passwordHash) : false
 
     if (!user || !valid) {
@@ -126,14 +127,9 @@ export class AuthService {
       throw new UnauthorizedException({ code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' })
     }
 
-    if (!user.isActive) throw new UnauthorizedException({ code: 'ACCOUNT_BANNED', message: 'Account suspended' })
+    if (!user.isActive)   throw new UnauthorizedException({ code: 'ACCOUNT_BANNED',        message: 'Account suspended' })
+    if (!user.isVerified) throw new UnauthorizedException({ code: 'EMAIL_NOT_VERIFIED',    message: 'Please verify your email before logging in.' })
 
-    if (!user.isVerified) throw new UnauthorizedException({
-      code: 'EMAIL_NOT_VERIFIED',
-      message: 'Please verify your email before logging in.',
-    })
-
-    // Successful login — clear failure counter
     await this.redis.clearLoginFailures(dto.email)
     await this.userModel.findByIdAndUpdate(user._id, { lastLogin: new Date() })
 
@@ -142,9 +138,7 @@ export class AuthService {
     return { user: this.safe(user), accessToken, refreshToken, expiresIn: '15m' }
   }
 
-  // ── Refresh access token (SEC-01) ─────────────────────────────────────────
-  // Accepts the long-lived refresh token (not the access token), rotates it
-  // (delete old, issue new), and returns a new access token + refresh token.
+  // ── Refresh access token ───────────────────────────────────────────────────
 
   async refreshTokens(rawRefreshToken: string) {
     const dotIdx = rawRefreshToken.indexOf('.')
@@ -171,7 +165,6 @@ export class AuthService {
     const user = await this.userModel.findById(matchedDoc.userId)
     if (!user || !user.isActive) throw new UnauthorizedException({ code: 'USER_INACTIVE' })
 
-    // Token rotation: delete the used token, issue a new one
     await this.refreshTokenModel.deleteOne({ _id: matchedDoc._id })
     const accessToken  = this.signAccess(user)
     const refreshToken = await this.createRefreshToken(user._id.toString())
@@ -181,11 +174,9 @@ export class AuthService {
   // ── Logout ────────────────────────────────────────────────────────────────
 
   async logout(jti: string, exp: number, rawRefreshToken?: string) {
-    // Blacklist the access token in Redis so it is immediately rejected
     if (jti && exp) {
       await this.redis.blacklistToken(jti, new Date(exp * 1000))
     }
-    // Also invalidate the refresh token if provided
     if (rawRefreshToken) {
       const dotIdx = rawRefreshToken.indexOf('.')
       if (dotIdx !== -1) {
@@ -205,47 +196,48 @@ export class AuthService {
     return { message: 'Logged out successfully' }
   }
 
-  // ── Forgot password (SEC-03) ──────────────────────────────────────────────
+  // ── Forgot password ───────────────────────────────────────────────────────
 
   async forgotPassword(dto: ForgotPasswordDto) {
     const user = await this.userModel.findOne({ email: dto.email.toLowerCase() })
-    // Always return the same message whether the email exists or not,
-    // to prevent email enumeration attacks.
     if (user) {
-      // Delete any existing reset tokens for this user before creating a new one
       await this.passwordResetTokenModel.deleteMany({ userId: user._id.toString() })
       const token = crypto.randomBytes(32).toString('hex')
       await this.passwordResetTokenModel.create({
         userId:    user._id.toString(),
         token,
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
       })
       await this.mailService.sendPasswordResetEmail(user.email, user.firstName, token)
     }
     return { message: 'If that email is registered, a reset link has been sent.' }
   }
 
-  // ── Reset password (SEC-03) ───────────────────────────────────────────────
+  // ── Reset password ────────────────────────────────────────────────────────
+  // SEC-02: added expiresAt: { $gt: new Date() } — same reasoning as verifyEmail.
+  // The MongoDB TTL index deletes expired tokens eventually, but between the
+  // token's expiry time and the next TTL cleanup cycle (up to 60 seconds), the
+  // token remains in the collection and was previously usable. This fix closes
+  // that window by rejecting expired tokens in application code unconditionally.
 
   async resetPassword(dto: ResetPasswordDto) {
-    // BUG FIX: removed `used: false` from this query. The `used` field was
-    // dead code — it was never set to true anywhere, so the condition was
-    // always vacuously true and provided zero protection. Token reuse is
-    // correctly prevented by `deleteOne` at the end of this method, which
-    // removes the token so it cannot be found on a second call. The `used`
-    // field has also been removed from the schema.
-    const record = await this.passwordResetTokenModel.findOne({ token: dto.token })
-    if (!record) throw new BadRequestException({ code: 'INVALID_TOKEN', message: 'Reset link is invalid or has expired' })
+    const record = await this.passwordResetTokenModel.findOne({
+      token:     dto.token,
+      expiresAt: { $gt: new Date() },   // SEC-02: explicit expiry check
+    })
+    if (!record) throw new BadRequestException({
+      code:    'INVALID_TOKEN',
+      message: 'Reset link is invalid or has expired',
+    })
 
     const newHash = await bcrypt.hash(dto.newPassword, 12)
     await this.userModel.findByIdAndUpdate(record.userId, { passwordHash: newHash })
-    // Invalidate all refresh tokens for this user (force re-login everywhere)
     await this.refreshTokenModel.deleteMany({ userId: record.userId })
     await this.passwordResetTokenModel.deleteOne({ _id: record._id })
     return { message: 'Password reset successfully. Please log in with your new password.' }
   }
 
-  // ── Change password (authenticated) ──────────────────────────────────────
+  // ── Change password ───────────────────────────────────────────────────────
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = await this.userModel.findById(userId)

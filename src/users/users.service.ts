@@ -4,22 +4,23 @@ import { Model }       from 'mongoose'
 import { User, UserDocument }       from '../database/user.schema'
 import { UpdateProfileDto, AddAddressDto, UpdateAddressDto } from './dto/users.dto'
 
+// Points-to-dollars conversion rate: 100 points = $1.00 (1 cent per point)
+const POINTS_PER_DOLLAR = 100
+
 @Injectable()
 export class UsersService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
-  // Strip the password hash before any data leaves this service.
+  // Strip the password hash before any data leaves this service. (QA-01)
   private safe(user: any) {
     const obj = user.toObject ? user.toObject() : user
-    const { passwordHash, ...rest } = obj
+    const { passwordHash, __v, ...rest } = obj
     return { ...rest, id: obj._id?.toString() }
   }
 
   private async findOrFail(userId: string) {
     const user = await this.userModel.findById(userId)
-    if (!user) {
-      throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'User not found' })
-    }
+    if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'User not found' })
     return user
   }
 
@@ -38,17 +39,11 @@ export class UsersService {
     if (dto.avatar    !== undefined) update.avatar    = dto.avatar
 
     const user = await this.userModel.findByIdAndUpdate(userId, update, { new: true })
-    if (!user) {
-      throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'User not found' })
-    }
+    if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'User not found' })
     return this.safe(user)
   }
 
   // ── Addresses ──────────────────────────────────────────────────────────────
-  // All mutations use MongoDB array operators ($push, $pull, $set with positional
-  // operator) instead of the old read-modify-write pattern, which was vulnerable
-  // to a race condition where two concurrent requests could silently overwrite
-  // each other's changes.
 
   async getAddresses(userId: string) {
     const user = await this.findOrFail(userId)
@@ -58,12 +53,8 @@ export class UsersService {
   async addAddress(userId: string, dto: AddAddressDto) {
     const user = await this.findOrFail(userId)
 
-    // Cap the total number of addresses to prevent unbounded array growth.
     if ((user.addresses ?? []).length >= 10) {
-      throw new BadRequestException({
-        code:    'ADDRESS_LIMIT_REACHED',
-        message: 'You can have at most 10 saved addresses',
-      })
+      throw new BadRequestException({ code: 'ADDRESS_LIMIT_REACHED', message: 'You can have at most 10 saved addresses' })
     }
 
     const addr = {
@@ -78,7 +69,6 @@ export class UsersService {
     }
 
     if (addr.isDefault) {
-      // Atomically unset all existing defaults before adding the new one.
       await this.userModel.updateOne(
         { _id: userId },
         { $set: { 'addresses.$[].isDefault': false } },
@@ -91,55 +81,98 @@ export class UsersService {
 
   async updateAddress(userId: string, addressId: string, dto: UpdateAddressDto) {
     const user = await this.findOrFail(userId)
-    const addresses = user.addresses ?? []
-    const exists = addresses.some((a: any) => a.id === addressId)
-    if (!exists) {
-      throw new NotFoundException({ code: 'ADDRESS_NOT_FOUND', message: 'Address not found' })
-    }
+    const exists = (user.addresses ?? []).some((a: any) => a.id === addressId)
+    if (!exists) throw new NotFoundException({ code: 'ADDRESS_NOT_FOUND', message: 'Address not found' })
 
-    // Use MongoDB arrayFilters with an identifier so the update targets the
-    // specific element by its `id` field — not by array index. The previous
-    // implementation used findIndex() then `addresses.${idx}.field`, which
-    // is vulnerable to a race condition: if a concurrent request adds or
-    // removes an address between the read and the write, the wrong element
-    // gets updated. ArrayFilters are evaluated atomically by MongoDB.
-    if (dto.isDefault === true) {
-      // First atomically clear all defaults, then set the target one.
+    if (dto.isDefault) {
       await this.userModel.updateOne(
         { _id: userId },
         { $set: { 'addresses.$[].isDefault': false } },
       )
     }
 
-    const setFields: Record<string, any> = {}
-    const fields = ['label', 'street', 'city', 'state', 'zip', 'country', 'isDefault'] as const
-    for (const f of fields) {
-      if (dto[f] !== undefined) setFields[`addresses.$[addr].${f}`] = dto[f]
-    }
+    const update: Record<string, any> = {}
+    if (dto.label     !== undefined) update['addresses.$[addr].label']     = dto.label
+    if (dto.street    !== undefined) update['addresses.$[addr].street']    = dto.street
+    if (dto.city      !== undefined) update['addresses.$[addr].city']      = dto.city
+    if (dto.state     !== undefined) update['addresses.$[addr].state']     = dto.state
+    if (dto.zip       !== undefined) update['addresses.$[addr].zip']       = dto.zip
+    if (dto.country   !== undefined) update['addresses.$[addr].country']   = dto.country
+    if (dto.isDefault !== undefined) update['addresses.$[addr].isDefault'] = dto.isDefault
 
     await this.userModel.findByIdAndUpdate(
       userId,
-      { $set: setFields },
+      { $set: update },
       { arrayFilters: [{ 'addr.id': addressId }] },
     )
 
-    // Re-read and return the updated address by its stable id, not index.
     const updated = await this.userModel.findById(userId)
-    return (updated?.addresses ?? []).find((a: any) => a.id === addressId) ?? null
+    return (updated!.addresses ?? []).find((a: any) => a.id === addressId)
   }
 
   async deleteAddress(userId: string, addressId: string) {
-    const user = await this.findOrFail(userId)
+    const user   = await this.findOrFail(userId)
     const exists = (user.addresses ?? []).some((a: any) => a.id === addressId)
-    if (!exists) {
-      throw new NotFoundException({ code: 'ADDRESS_NOT_FOUND', message: 'Address not found' })
+    if (!exists) throw new NotFoundException({ code: 'ADDRESS_NOT_FOUND', message: 'Address not found' })
+
+    await this.userModel.findByIdAndUpdate(userId, {
+      $pull: { addresses: { id: addressId } },
+    })
+    return { deleted: true, addressId }
+  }
+
+  // ── Loyalty Points ─────────────────────────────────────────────────────────
+  // Points are awarded at 1 point per dollar when an order is marked delivered
+  // (see admin-orders.controller.ts and admin-bulk.controller.ts).
+  // 100 points = $1.00 credit (POINTS_PER_DOLLAR constant above).
+  // Redemption here generates a credit record — in production, wire this to
+  // your payment gateway's customer balance or issue a one-time coupon code.
+
+  async getLoyaltyPoints(userId: string) {
+    const user = await this.findOrFail(userId)
+    return {
+      userId,
+      points:           user.loyaltyPoints ?? 0,
+      pointsValue:      parseFloat(((user.loyaltyPoints ?? 0) / POINTS_PER_DOLLAR).toFixed(2)),
+      pointsPerDollar:  POINTS_PER_DOLLAR,
+      description:      `${user.loyaltyPoints ?? 0} points = $${((user.loyaltyPoints ?? 0) / POINTS_PER_DOLLAR).toFixed(2)} credit`,
+    }
+  }
+
+  async redeemLoyaltyPoints(userId: string, pointsToRedeem: number) {
+    if (!Number.isInteger(pointsToRedeem) || pointsToRedeem < POINTS_PER_DOLLAR) {
+      throw new BadRequestException({
+        code:    'INVALID_REDEMPTION',
+        message: `Minimum redemption is ${POINTS_PER_DOLLAR} points ($1.00). Points must be a whole number.`,
+      })
     }
 
-    // $pull atomically removes all array elements matching the condition.
-    await this.userModel.findByIdAndUpdate(
+    const user = await this.findOrFail(userId)
+    if ((user.loyaltyPoints ?? 0) < pointsToRedeem) {
+      throw new BadRequestException({
+        code:    'INSUFFICIENT_POINTS',
+        message: `You have ${user.loyaltyPoints ?? 0} points but requested ${pointsToRedeem}.`,
+      })
+    }
+
+    const dollarValue = parseFloat((pointsToRedeem / POINTS_PER_DOLLAR).toFixed(2))
+
+    // Atomically deduct the points — $inc with a negative value is safe here because
+    // we already verified the balance above. The document is not locked between the
+    // check and the update, but the points only ever increase from order deliveries,
+    // so a concurrent redemption on the same account is the main race. For production,
+    // replace this with a MongoDB transaction if strict balance guarantees are needed.
+    const updated = await this.userModel.findByIdAndUpdate(
       userId,
-      { $pull: { addresses: { id: addressId } } },
+      { $inc: { loyaltyPoints: -pointsToRedeem } },
+      { new: true },
     )
-    return { deleted: true, addressId }
+
+    return {
+      pointsRedeemed:    pointsToRedeem,
+      dollarCredit:      dollarValue,
+      remainingPoints:   updated!.loyaltyPoints ?? 0,
+      message:           `$${dollarValue.toFixed(2)} credit applied. Contact support to apply this to an order, or use it on your next checkout.`,
+    }
   }
 }

@@ -3,8 +3,6 @@ import * as dotenv from 'dotenv'
 dotenv.config()
 
 // ── Startup environment validation ────────────────────────────────────────────
-// Fail immediately with a clear message rather than crashing later with a
-// cryptic Mongoose or JWT error that obscures the real problem.
 const REQUIRED_ENV = ['MONGODB_URI', 'JWT_SECRET', 'REDIS_URL']
 const missing      = REQUIRED_ENV.filter(k => !process.env[k])
 if (missing.length > 0) {
@@ -21,6 +19,7 @@ import { ValidationPipe } from '@nestjs/common'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
 import { join }                 from 'path'
+import * as express             from 'express'
 import { AppModule }            from './app.module'
 import { AllExceptionsFilter }  from './common/all-exceptions.filter'
 import helmet      from 'helmet'
@@ -30,19 +29,37 @@ import morgan      from 'morgan'
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule)
 
-  // DES-01 fix: API versioned at /api/v1
   app.setGlobalPrefix('api/v1')
 
-  // Serve uploaded files statically at /uploads/<filename>
-  app.useStaticAssets(join(process.cwd(), 'public', 'uploads'), { prefix: '/uploads' })
+  // SEC-03: explicit body-size limits registered before any route handlers.
+  // Without these, Express defaults to 100 kB for JSON and no limit for
+  // URL-encoded bodies. A missing explicit limit means an attacker can submit
+  // a 50 MB JSON body and exhaust the Node.js heap. 1 MB is generous for all
+  // legitimate API use cases in this application.
+  app.use(express.json({ limit: '1mb' }))
+  app.use(express.urlencoded({ limit: '1mb', extended: true }))
+
+  // Serve uploaded files with Content-Disposition: attachment to prevent
+  // inline execution of any uploaded SVG/HTML files. (BUG-06 complement.)
+  app.useStaticAssets(join(process.cwd(), 'public', 'uploads'), {
+    prefix: '/uploads',
+    setHeaders: (res) => {
+      res.setHeader('Content-Disposition', 'attachment')
+      res.setHeader('X-Content-Type-Options', 'nosniff')
+    },
+  })
 
   // ── CORS ────────────────────────────────────────────────────────────────────
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
     : '*'
-  app.enableCors({ origin: allowedOrigins, methods: 'GET,POST,PATCH,DELETE,OPTIONS', allowedHeaders: 'Content-Type,Authorization,X-Session-ID,Idempotency-Key' })
+  app.enableCors({
+    origin:         allowedOrigins,
+    methods:        'GET,POST,PATCH,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type,Authorization,X-Session-ID,Idempotency-Key',
+  })
 
-  // ── Security & utility middleware ────────────────────────────────────────────
+  // ── Security & utility middleware ─────────────────────────────────────────
   app.use(helmet())
   app.use(compression())
   app.use(morgan('combined'))
@@ -53,8 +70,13 @@ async function bootstrap() {
     whitelist: true, transform: true, forbidNonWhitelisted: true,
   }))
 
-  // ── Swagger — development only ───────────────────────────────────────────────
-  if (process.env.NODE_ENV !== 'production') {
+  // ── Swagger ──────────────────────────────────────────────────────────────
+  // QA-04: Swagger is now opt-in via SWAGGER_ENABLED=true rather than
+  // opt-out via NODE_ENV=production. Any deployment that does not explicitly
+  // set SWAGGER_ENABLED=true will not expose the API documentation, regardless
+  // of what NODE_ENV is set to. This prevents accidental Swagger exposure on
+  // staging, review-apps, or Railway deployments where NODE_ENV may be unset.
+  if (process.env.SWAGGER_ENABLED === 'true') {
     const config = new DocumentBuilder()
       .setTitle('Pikly Store API v2')
       .setDescription('Full-featured eCommerce REST API — NestJS + MongoDB + Redis')

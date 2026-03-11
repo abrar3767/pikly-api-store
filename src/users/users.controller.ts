@@ -1,17 +1,25 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, UseGuards, Request,
+  Param, Body, UseGuards, Request, ParseIntPipe,
+  Query,
 } from '@nestjs/common'
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger'
 import { AuthGuard }    from '@nestjs/passport'
+import { IsInt, Min }   from 'class-validator'
+import { ApiProperty }  from '@nestjs/swagger'
+import { Type }         from 'class-transformer'
 import { UsersService } from './users.service'
 import { successResponse } from '../common/api-utils'
 import { UpdateProfileDto, AddAddressDto, UpdateAddressDto } from './dto/users.dto'
 
-// Every route in this controller requires a valid JWT.
-// The userId is always extracted from the verified token (req.user.userId),
-// never from a client-supplied parameter — this prevents IDOR attacks where
-// a user could read or modify another user's data by passing a different userId.
+class RedeemPointsDto {
+  @ApiProperty({ description: 'Number of loyalty points to redeem (minimum 100 = $1.00)', example: 500 })
+  @IsInt()
+  @Min(100)
+  @Type(() => Number)
+  points: number
+}
+
 @ApiTags('Users')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -22,29 +30,25 @@ export class UsersController {
   @Get('profile')
   @ApiOperation({ summary: 'Get my profile' })
   async getProfile(@Request() req: any) {
-    const data = await this.usersService.getProfile(req.user.userId)
-    return successResponse(data)
+    return successResponse(await this.usersService.getProfile(req.user.userId))
   }
 
   @Patch('profile')
-  @ApiOperation({ summary: 'Update my profile (firstName, lastName, phone, avatar)' })
+  @ApiOperation({ summary: 'Update my profile' })
   async updateProfile(@Request() req: any, @Body() dto: UpdateProfileDto) {
-    const data = await this.usersService.updateProfile(req.user.userId, dto)
-    return successResponse(data)
+    return successResponse(await this.usersService.updateProfile(req.user.userId, dto))
   }
 
   @Get('addresses')
   @ApiOperation({ summary: 'Get my saved addresses' })
   async getAddresses(@Request() req: any) {
-    const data = await this.usersService.getAddresses(req.user.userId)
-    return successResponse(data)
+    return successResponse(await this.usersService.getAddresses(req.user.userId))
   }
 
   @Post('addresses')
   @ApiOperation({ summary: 'Add a new address' })
   async addAddress(@Request() req: any, @Body() dto: AddAddressDto) {
-    const data = await this.usersService.addAddress(req.user.userId, dto)
-    return successResponse(data)
+    return successResponse(await this.usersService.addAddress(req.user.userId, dto))
   }
 
   @Patch('addresses/:addressId')
@@ -54,14 +58,27 @@ export class UsersController {
     @Param('addressId') addressId: string,
     @Body() dto: UpdateAddressDto,
   ) {
-    const data = await this.usersService.updateAddress(req.user.userId, addressId, dto)
-    return successResponse(data)
+    return successResponse(await this.usersService.updateAddress(req.user.userId, addressId, dto))
   }
 
   @Delete('addresses/:addressId')
   @ApiOperation({ summary: 'Delete an address' })
   async deleteAddress(@Request() req: any, @Param('addressId') addressId: string) {
-    const data = await this.usersService.deleteAddress(req.user.userId, addressId)
-    return successResponse(data)
+    return successResponse(await this.usersService.deleteAddress(req.user.userId, addressId))
+  }
+
+  // ── Loyalty Points ─────────────────────────────────────────────────────────
+
+  @Get('loyalty')
+  @ApiOperation({ summary: 'Get my loyalty points balance and dollar value' })
+  async getLoyaltyPoints(@Request() req: any) {
+    return successResponse(await this.usersService.getLoyaltyPoints(req.user.userId))
+  }
+
+  @Post('loyalty/redeem')
+  @ApiOperation({ summary: 'Redeem loyalty points for store credit (100 points = $1.00)' })
+  @ApiBody({ type: RedeemPointsDto })
+  async redeemPoints(@Request() req: any, @Body() dto: RedeemPointsDto) {
+    return successResponse(await this.usersService.redeemLoyaltyPoints(req.user.userId, dto.points))
   }
 }

@@ -3,11 +3,12 @@ import {
   Body, UseGuards, NotFoundException, BadRequestException,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger'
-import { AuthGuard }   from '@nestjs/passport'
-import { InjectModel } from '@nestjs/mongoose'
-import { Model }       from 'mongoose'
-import { RolesGuard }  from '../common/guards/roles.guard'
-import { Roles }       from '../common/decorators/roles.decorator'
+import { AuthGuard }     from '@nestjs/passport'
+import { InjectModel }   from '@nestjs/mongoose'
+import { Model }         from 'mongoose'
+import { RolesGuard }    from '../common/guards/roles.guard'
+import { Roles }         from '../common/decorators/roles.decorator'
+import { ProductsService } from '../products/products.service'
 import { Order, OrderDocument } from '../database/order.schema'
 import { User,  UserDocument  } from '../database/user.schema'
 import { MailService }    from '../mail/mail.service'
@@ -23,12 +24,13 @@ export class AdminOrdersController {
   constructor(
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     @InjectModel(User.name)  private userModel:  Model<UserDocument>,
-    private readonly mailService:    MailService,
-    private readonly webhookService: WebhookService,
+    private readonly mailService:     MailService,
+    private readonly webhookService:  WebhookService,
+    private readonly productsService: ProductsService,
   ) {}
 
   @Get('stats')
-  @ApiOperation({ summary: '[Admin] Get order count grouped by status' })
+  @ApiOperation({ summary: '[Admin] Order count grouped by status' })
   async stats() {
     const result = await this.orderModel.aggregate([
       { $group: { _id: '$status', count: { $sum: 1 } } },
@@ -45,7 +47,7 @@ export class AdminOrdersController {
   @ApiQuery({ name: 'limit',  required: false })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'userId', required: false })
-  @ApiQuery({ name: 'search', required: false, description: 'Search by orderId prefix' })
+  @ApiQuery({ name: 'search', required: false })
   async findAll(
     @Query('page')   page?:   number,
     @Query('limit')  limit?:  number,
@@ -87,33 +89,55 @@ export class AdminOrdersController {
     @Param('orderId') orderId: string,
     @Body() body: { status: string; message?: string },
   ) {
-    const valid = ['pending','confirmed','processing','shipped','delivered','cancelled']
+    const valid = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled']
     if (!valid.includes(body.status)) {
-      throw new BadRequestException({
-        code:    'INVALID_STATUS',
-        message: `Invalid status. Must be one of: ${valid.join(', ')}`,
-      })
+      throw new BadRequestException({ code: 'INVALID_STATUS', message: `Invalid status. Must be one of: ${valid.join(', ')}` })
     }
+
     const order = await this.orderModel.findOne({ orderId })
     if (!order) throw new NotFoundException({ code: 'ORDER_NOT_FOUND', message: `Order ${orderId} not found` })
 
     const prevStatus = order.status
     const now        = new Date().toISOString()
     order.status     = body.status
-    if (body.status === 'cancelled') order.paymentStatus = 'refunded'
-    if (body.status === 'delivered') order.paymentStatus = 'paid'
+
     order.timeline.push({
       status:    body.status,
       timestamp: now,
       message:   body.message ?? `Status updated to ${body.status} by admin`,
     })
 
-    // FEAT-06 + BUG FIX: send shipping notification only if this is the first
-    // time the order reaches 'shipped' status AND the email has not already
-    // been sent. The shippingEmailSent flag prevents a duplicate email in the
-    // scenario where status is manually set to 'shipped' here and then the
-    // admin also adds a tracking number via addTracking() — without the flag,
-    // both code paths would fire the email independently.
+    // ── Status-specific side effects ─────────────────────────────────────────
+
+    if (body.status === 'cancelled') {
+      // BUG-05: use semantically correct paymentStatus values.
+      // COD orders were never charged — "refunded" is factually incorrect.
+      // Card/wallet orders need a real gateway refund; "pending_refund" signals
+      // that to the finance team without implying the money was already returned.
+      order.paymentStatus = order.paymentMethod === 'cod' ? 'cancelled' : 'pending_refund'
+
+      // BUG-05: restore inventory for all cancelled items
+      for (const item of order.items as any[]) {
+        await this.productsService.incrementStock(item.productId, item.quantity)
+      }
+    }
+
+    if (body.status === 'delivered') {
+      order.paymentStatus = 'paid'
+
+      // Loyalty points: award 1 point per whole dollar of order total.
+      // Points are accumulated on the User document and can be redeemed via
+      // POST /users/loyalty/redeem. Using $inc is atomic — concurrent deliveries
+      // on the same user's orders cannot race and lose increments.
+      const pointsEarned = Math.floor(order.pricing?.total ?? 0)
+      if (pointsEarned > 0) {
+        await this.userModel.findByIdAndUpdate(
+          order.userId,
+          { $inc: { loyaltyPoints: pointsEarned } },
+        )
+      }
+    }
+
     if (prevStatus !== 'shipped' && body.status === 'shipped' && !order.shippingEmailSent) {
       const user = await this.userModel.findById(order.userId).lean() as any
       if (user) {
@@ -124,7 +148,6 @@ export class AdminOrdersController {
 
     await order.save()
 
-    // FEAT-05: fire webhook for status change
     this.webhookService.dispatch('order.status_changed', {
       orderId: order.orderId, previousStatus: prevStatus, newStatus: body.status,
     }).catch(() => {})
@@ -153,19 +176,10 @@ export class AdminOrdersController {
     if (!wasShipped) {
       order.status = 'shipped'
       order.timeline.push({ status: 'shipped', timestamp: now, message: `Shipped with tracking number ${body.trackingNumber}` })
-
-      // FEAT-05: fire webhook
       this.webhookService.dispatch('order.shipped',        { orderId: order.orderId, trackingNumber: body.trackingNumber }).catch(() => {})
       this.webhookService.dispatch('order.status_changed', { orderId: order.orderId, previousStatus: 'processing', newStatus: 'shipped' }).catch(() => {})
     }
 
-    // FEAT-06 + BUG FIX: send shipping notification only if not already sent.
-    // This covers the case where addTracking() is the first action that moves
-    // the order to 'shipped' (wasShipped was false), AND the case where the
-    // status was already set to 'shipped' via updateStatus() but no tracking
-    // number was provided at that time — the customer still deserves the
-    // tracking number in a follow-up email, so we send it once tracking is added
-    // as long as the initial notification was already delivered.
     if (!order.shippingEmailSent) {
       const user = await this.userModel.findById(order.userId).lean() as any
       if (user) {

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, OnModuleInit } from '@nestjs/common'
+import { Injectable, NotFoundException, BadRequestException, OnModuleInit, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model }       from 'mongoose'
 import Fuse            from 'fuse.js'
@@ -14,6 +14,8 @@ import { Product, ProductDocument } from '../database/product.schema'
 
 @Injectable()
 export class ProductsService implements OnModuleInit {
+  private readonly logger = new Logger(ProductsService.name)
+
   products: any[] = []
 
   constructor(
@@ -24,10 +26,6 @@ export class ProductsService implements OnModuleInit {
 
   async onModuleInit() {
     await this.loadProducts()
-    // PERF-01: subscribe to cross-process invalidation signals via Redis pub/sub.
-    // When any process calls invalidate(), it publishes to this channel and all
-    // other processes reload their in-memory store — ensuring all pods serve
-    // fresh data after an admin mutation.
     this.redis.subscribe('products:invalidate', async () => {
       await this.loadProducts()
     })
@@ -36,18 +34,13 @@ export class ProductsService implements OnModuleInit {
   async loadProducts() {
     const docs = await this.productModel.find({}).lean()
     this.products = docs.map(({ _id, __v, ...rest }: any) => rest)
+    this.logger.log(`Product store loaded: ${this.products.length} products`)
   }
 
   async invalidate() {
-    // PERF-03 fix: flush only product-list cache keys instead of the entire
-    // cache. This preserves homepage, banner, and category cache entries that
-    // are unrelated to the changed product.
-    // Use CacheService's own .keys()/.del() — do NOT access .store which does
-    // not exist and caused the selective invalidation to silently no-op before.
     const allKeys = this.cache.keys()
     allKeys.filter((k: string) => k.startsWith('products:')).forEach((k: string) => this.cache.del(k))
     await this.loadProducts()
-    // Tell all sibling processes to reload too (PERF-01)
     await this.redis.publish('products:invalidate', Date.now().toString())
   }
 
@@ -55,9 +48,6 @@ export class ProductsService implements OnModuleInit {
   findProductById(id: string): any | undefined { return this.products.find(p => p.id === id && p.isActive) }
   findProductBySlug(slug: string): any | undefined { return this.products.find(p => p.slug === slug && p.isActive) }
 
-  // Public live-stock lookup for CartService — avoids the cart accessing the
-  // private productModel field directly via 'as any' (which breaks encapsulation
-  // and is fragile if the field is renamed or the class is refactored).
   async getLiveProduct(productId: string): Promise<any | null> {
     return this.productModel.findOne({ id: productId, isActive: true }).lean()
   }
@@ -65,8 +55,6 @@ export class ProductsService implements OnModuleInit {
   // ── Main product list ──────────────────────────────────────────────────────
 
   findAll(query: FilterProductsDto) {
-    // PERF-02 fix: normalize cache key by sorting query keys alphabetically so
-    // ?q=laptop&brand=apple and ?brand=apple&q=laptop produce the same key.
     const sortedQuery = Object.keys(query as any).sort()
       .reduce((acc: any, k) => { acc[k] = (query as any)[k]; return acc }, {})
     const cacheKey = `products:list:${JSON.stringify(sortedQuery)}`
@@ -76,10 +64,6 @@ export class ProductsService implements OnModuleInit {
 
     const active = this.findActiveProducts()
 
-    // BUG-03 fix: run filterProducts ONCE on the untruncated active set to get
-    // the full filtered result, then paginate it. Previously filterProducts was
-    // called twice — once for pagination and once for facets with limit:99999
-    // — which doubled the CPU cost and contradicted the code comment.
     const fullFiltered = filterProducts(active, { ...query, page: 1, limit: 99999 })
     const paginated    = smartPaginate(fullFiltered.items, {
       page: query.page, limit: query.limit ?? 20, cursor: (query as any).cursor,
@@ -95,8 +79,8 @@ export class ProductsService implements OnModuleInit {
         total: paginated.total, limit: paginated.limit,
         hasNextPage: paginated.hasNextPage, hasPrevPage: paginated.hasPrevPage,
         mode: paginated.mode,
-        ...(paginated.mode==='offset' && { page:(paginated as any).page, totalPages:(paginated as any).totalPages }),
-        ...(paginated.mode==='cursor' && { nextCursor:(paginated as any).nextCursor, prevCursor:(paginated as any).prevCursor }),
+        ...(paginated.mode === 'offset' && { page: (paginated as any).page, totalPages: (paginated as any).totalPages }),
+        ...(paginated.mode === 'cursor' && { nextCursor: (paginated as any).nextCursor, prevCursor: (paginated as any).prevCursor }),
       },
       facets,
       appliedFilters: fullFiltered.appliedFilters,
@@ -115,54 +99,47 @@ export class ProductsService implements OnModuleInit {
   findTopRated()    { return this.findActiveProducts().filter(p => p.topRated).sort((a,b) => b.ratings.average-a.ratings.average).slice(0,12) }
   findOnSale()      { return this.findActiveProducts().filter(p => p.onSale).sort((a,b) => b.pricing.discountPercent-a.pricing.discountPercent).slice(0,12) }
 
-  // BUG-07 fix: use live category slugs instead of a hardcoded list.
-  // The CategoriesService reference is injected lazily (passed in) to avoid
-  // a circular dependency. Callers pass the live categories array.
   getSuggestions(q: string, liveCategories: any[] = []) {
     if (!q || q.trim().length < 2) return { suggestions: [] }
     const suggestions: any[] = []
     const active = this.findActiveProducts()
 
-    new Fuse(active, { keys:['title','brand','tags'], threshold:0.3, includeScore:true })
+    new Fuse(active, { keys: ['title','brand','tags'], threshold: 0.3, includeScore: true })
       .search(q.trim()).slice(0,3)
       .forEach(({ item }) => suggestions.push({
-        type:'product', title:item.title, slug:item.slug,
-        image:item.media?.thumb??'', price:item.pricing?.current,
+        type: 'product', title: item.title, slug: item.slug,
+        image: item.media?.thumb ?? '', price: item.pricing?.current,
       }))
 
-    // BUG-07 fix: use live category slugs from the database, not a hardcoded array
     const cats = liveCategories.length
       ? liveCategories.map((c: any) => c.slug)
       : ['electronics','fashion','home-kitchen','beauty','sports-fitness','books']
     cats.filter((c: string) => c.toLowerCase().includes(q.toLowerCase())).slice(0,2)
       .forEach((c: string) => suggestions.push({
-        type:'category', title:c.replace(/-/g,' ').replace(/\b\w/g, (l: string) => l.toUpperCase()), slug:c,
+        type: 'category', title: c.replace(/-/g,' ').replace(/\b\w/g, (l: string) => l.toUpperCase()), slug: c,
       }))
 
-    new Fuse([...new Set(active.map(p => p.brand))].map(b => ({ name: b })), { keys:['name'], threshold:0.3 })
+    new Fuse([...new Set(active.map(p => p.brand))].map(b => ({ name: b })), { keys: ['name'], threshold: 0.3 })
       .search(q).slice(0,2)
       .forEach(({ item }) => suggestions.push({
-        type:'brand', title:(item as any).name,
-        query:`?brand=${encodeURIComponent((item as any).name)}`,
+        type: 'brand', title: (item as any).name,
+        query: `?brand=${encodeURIComponent((item as any).name)}`,
       }))
 
-    suggestions.push({ type:'query', title:`${q} under $500`, query:`?q=${encodeURIComponent(q)}&maxPrice=500` })
+    suggestions.push({ type: 'query', title: `${q} under $500`, query: `?q=${encodeURIComponent(q)}&maxPrice=500` })
     return { suggestions: suggestions.slice(0, 8) }
   }
 
   findOne(slug: string) {
     const product = this.findProductBySlug(slug)
-    if (!product) throw new NotFoundException({ code:'PRODUCT_NOT_FOUND', message:`Product "${slug}" not found` })
+    if (!product) throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${slug}" not found` })
 
     const related = this.findActiveProducts()
-      .filter(p => p.subcategory===product.subcategory && p.id!==product.id)
+      .filter(p => p.subcategory === product.subcategory && p.id !== product.id)
       .sort((a,b) => Math.abs(a.pricing.current-product.pricing.current)-Math.abs(b.pricing.current-product.pricing.current))
       .slice(0,8)
       .map(p => ({ id:p.id,slug:p.slug,title:p.title,brand:p.brand,media:p.media,pricing:p.pricing,ratings:p.ratings,onSale:p.onSale }))
 
-    // SVC-07 note: frequentlyBoughtWith is a deterministic seeded selection —
-    // not real co-purchase data. It is stable and cacheable. Real co-purchase
-    // data would require order-line-item analysis which is out of scope here.
     const seed = product.id.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)
     const frequentlyBoughtWith = this.findActiveProducts()
       .filter(p => p.category !== product.category)
@@ -183,7 +160,7 @@ export class ProductsService implements OnModuleInit {
 
   findReviews(slug: string, query: ReviewQueryDto) {
     const product = this.products.find(p => p.slug === slug)
-    if (!product) throw new NotFoundException({ code:'PRODUCT_NOT_FOUND', message:`Product "${slug}" not found` })
+    if (!product) throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${slug}" not found` })
 
     let reviews = [...(product.reviews ?? [])]
     if (query.rating)            reviews = reviews.filter(r => r.rating === Number(query.rating))
@@ -196,28 +173,38 @@ export class ProductsService implements OnModuleInit {
       default:            reviews.sort((a,b) => new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime())
     }
 
-    const paginated = smartPaginate(reviews, { page:query.page, limit:query.limit??10, cursor:query.cursor })
+    const paginated = smartPaginate(reviews, { page: query.page, limit: query.limit ?? 10, cursor: query.cursor })
     return {
       reviews: paginated.items,
       pagination: {
-        total:paginated.total, limit:paginated.limit,
-        hasNextPage:paginated.hasNextPage, hasPrevPage:paginated.hasPrevPage, mode:paginated.mode,
-        ...(paginated.mode==='offset' && { page:(paginated as any).page, totalPages:(paginated as any).totalPages }),
-        ...(paginated.mode==='cursor' && { nextCursor:(paginated as any).nextCursor, prevCursor:(paginated as any).prevCursor }),
+        total: paginated.total, limit: paginated.limit,
+        hasNextPage: paginated.hasNextPage, hasPrevPage: paginated.hasPrevPage, mode: paginated.mode,
+        ...(paginated.mode === 'offset' && { page: (paginated as any).page, totalPages: (paginated as any).totalPages }),
+        ...(paginated.mode === 'cursor' && { nextCursor: (paginated as any).nextCursor, prevCursor: (paginated as any).prevCursor }),
       },
       summary: {
-        average:product.ratings.average, total:product.ratings.count,
-        distribution:product.ratings.distribution??{},
-        verifiedCount:reviews.filter(r=>r.verified).length,
-        withImages:reviews.filter(r=>r.images?.length>0).length,
+        average: product.ratings.average, total: product.ratings.count,
+        distribution: product.ratings.distribution ?? {},
+        verifiedCount: reviews.filter(r => r.verified).length,
+        withImages:    reviews.filter(r => r.images?.length > 0).length,
       },
     }
   }
 
-  // FEAT-01: Submit a review (POST /products/:slug/reviews)
   async submitReview(slug: string, userId: string, dto: SubmitReviewDto) {
     const product = await this.productModel.findOne({ slug })
-    if (!product) throw new NotFoundException({ code:'PRODUCT_NOT_FOUND', message:`Product "${slug}" not found` })
+    if (!product) throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${slug}" not found` })
+
+    // BUG-01: prevent the same user from submitting multiple reviews for the
+    // same product. Without this check, a single user can spam reviews and
+    // artificially inflate or tank the product's rating.
+    const alreadyReviewed = (product.reviews ?? []).some((r: any) => r.userId === userId)
+    if (alreadyReviewed) {
+      throw new BadRequestException({
+        code:    'ALREADY_REVIEWED',
+        message: 'You have already submitted a review for this product.',
+      })
+    }
 
     const review = {
       id:        `rev_${userId}_${Date.now()}`,
@@ -231,23 +218,41 @@ export class ProductsService implements OnModuleInit {
       createdAt: new Date().toISOString(),
     }
 
-    await this.productModel.findOneAndUpdate(
+    // BUG-02: use a single aggregation pipeline update to push the review AND
+    // recompute the average atomically in one round-trip. The previous
+    // implementation did three separate operations (push → reload → set average),
+    // creating a race condition where concurrent reviews could both read the
+    // same old average and one review's contribution would be lost permanently.
+    //
+    // The pipeline: (1) appends the new review to the array, (2) recomputes the
+    // average from the final array, (3) sets the new count — all in a single
+    // atomic update. MongoDB processes pipeline stages in order within the same
+    // operation, so no concurrent write can interleave between stages.
+    await this.productModel.updateOne(
       { slug },
-      {
-        $push: { reviews: { $each: [review], $position: 0 } },
-        // Recompute average and count atomically
-        $inc:  { 'ratings.count': 1 },
-      },
+      [{
+        $set: {
+          reviews: { $concatArrays: ['$reviews', [review]] },
+          'ratings.count': { $add: ['$ratings.count', 1] },
+          'ratings.average': {
+            $round: [{
+              $divide: [
+                {
+                  $reduce: {
+                    input:        { $concatArrays: ['$reviews', [review]] },
+                    initialValue: 0,
+                    in:           { $add: ['$$value', '$$this.rating'] },
+                  },
+                },
+                { $add: ['$ratings.count', 1] },
+              ],
+            }, 1],
+          },
+        },
+      }],
     )
 
-    // Recompute average after save
-    const updated = await this.productModel.findOne({ slug }).lean() as any
-    if (updated) {
-      const total = updated.reviews.reduce((s: number, r: any) => s + r.rating, 0)
-      const avg   = parseFloat((total / updated.reviews.length).toFixed(1))
-      await this.productModel.findOneAndUpdate({ slug }, { $set: { 'ratings.average': avg } })
-    }
-
+    this.logger.log(`Review submitted: slug=${slug} userId=${userId} rating=${dto.rating}`)
     await this.invalidate()
     return review
   }
@@ -262,7 +267,13 @@ export class ProductsService implements OnModuleInit {
     )
     if (result) {
       const cached = this.products.find(p => p.id === productId)
-      if (cached) { cached.inventory.stock -= quantity; if (cached.inventory.sold !== undefined) cached.inventory.sold += quantity }
+      if (cached) {
+        cached.inventory.stock -= quantity
+        if (cached.inventory.sold !== undefined) cached.inventory.sold += quantity
+      }
+    }
+    if (!result) {
+      this.logger.warn(`Stock decrement failed: productId=${productId} requested=${quantity}`)
     }
     return !!result
   }
@@ -273,7 +284,11 @@ export class ProductsService implements OnModuleInit {
       { $inc: { 'inventory.stock': quantity, 'inventory.sold': -quantity } },
     )
     const cached = this.products.find(p => p.id === productId)
-    if (cached) { cached.inventory.stock += quantity; if (cached.inventory.sold !== undefined) cached.inventory.sold -= quantity }
+    if (cached) {
+      cached.inventory.stock += quantity
+      if (cached.inventory.sold !== undefined) cached.inventory.sold -= quantity
+    }
+    this.logger.log(`Stock restored: productId=${productId} qty=${quantity}`)
   }
 
   // ── Admin ─────────────────────────────────────────────────────────────────
@@ -283,35 +298,37 @@ export class ProductsService implements OnModuleInit {
     if (query.isActive !== undefined) filter.isActive = query.isActive
     if (query.search) {
       const escaped = query.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      filter.$or = [{ title:{ $regex:escaped,$options:'i' } }, { brand:{ $regex:escaped,$options:'i' } }]
+      filter.$or = [{ title: { $regex: escaped, $options: 'i' } }, { brand: { $regex: escaped, $options: 'i' } }]
     }
     const p = Number(query.page??1), l = Number(query.limit??20), skip = (p-1)*l
     const [items, total] = await Promise.all([
       this.productModel.find(filter).skip(skip).limit(l).lean(),
       this.productModel.countDocuments(filter),
     ])
-    return { products:items, pagination:{ total,page:p,limit:l,totalPages:Math.ceil(total/l),hasNextPage:p*l<total } }
+    return { products: items, pagination: { total, page: p, limit: l, totalPages: Math.ceil(total/l), hasNextPage: p*l<total } }
   }
 
   async adminCreate(body: any) {
-    const existing = await this.productModel.findOne({ $or:[{ id:body.id },{ slug:body.slug }] })
-    if (existing) throw new BadRequestException({ code:'DUPLICATE_PRODUCT', message:'A product with this id or slug already exists' })
+    const existing = await this.productModel.findOne({ $or: [{ id: body.id }, { slug: body.slug }] })
+    if (existing) throw new BadRequestException({ code: 'DUPLICATE_PRODUCT', message: 'A product with this id or slug already exists' })
     const product = await this.productModel.create(body)
     await this.invalidate()
+    this.logger.log(`Product created: id=${body.id}`)
     return product
   }
 
   async adminUpdate(id: string, body: any) {
     const product = await this.productModel.findOneAndUpdate({ id }, { $set: body }, { new: true })
-    if (!product) throw new NotFoundException({ code:'PRODUCT_NOT_FOUND', message:`Product "${id}" not found` })
+    if (!product) throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${id}" not found` })
     await this.invalidate()
     return product
   }
 
   async adminDelete(id: string) {
     const product = await this.productModel.findOneAndDelete({ id })
-    if (!product) throw new NotFoundException({ code:'PRODUCT_NOT_FOUND', message:`Product "${id}" not found` })
+    if (!product) throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${id}" not found` })
     await this.invalidate()
-    return { deleted:true, id }
+    this.logger.log(`Product deleted: id=${id}`)
+    return { deleted: true, id }
   }
 }

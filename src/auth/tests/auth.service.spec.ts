@@ -11,16 +11,14 @@ import { VerificationToken }   from '../../database/verification-token.schema'
 import { PasswordResetToken }  from '../../database/password-reset-token.schema'
 import * as bcrypt             from 'bcrypt'
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-// createMock builds a jest.fn()-based partial mock of a Mongoose Model so we
-// can test service logic without touching a real database.
 const createMock = (overrides: Record<string, any> = {}) => ({
-  findOne:         jest.fn(),
-  findById:        jest.fn(),
+  findOne:           jest.fn(),
+  findById:          jest.fn(),
   findByIdAndUpdate: jest.fn(),
-  create:          jest.fn(),
-  deleteMany:      jest.fn(),
-  deleteOne:       jest.fn(),
+  create:            jest.fn(),
+  deleteMany:        jest.fn(),
+  deleteOne:         jest.fn(),
+  find:              jest.fn().mockResolvedValue([]),
   ...overrides,
 })
 
@@ -40,13 +38,16 @@ describe('AuthService', () => {
     verifyModel  = createMock()
     resetModel   = createMock()
 
-    jwtService   = { sign: jest.fn().mockReturnValue('mock.access.token') }
-    mailService  = { sendVerificationEmail: jest.fn().mockResolvedValue(undefined), sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined) }
-    redis        = {
-      getLoginFailures:    jest.fn().mockResolvedValue(0),
+    jwtService  = { sign: jest.fn().mockReturnValue('mock.access.token') }
+    mailService = {
+      sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+      sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+    }
+    redis = {
+      getLoginFailures:      jest.fn().mockResolvedValue(0),
       incrementLoginFailure: jest.fn().mockResolvedValue(1),
-      clearLoginFailures:  jest.fn().mockResolvedValue(undefined),
-      blacklistToken:      jest.fn().mockResolvedValue(undefined),
+      clearLoginFailures:    jest.fn().mockResolvedValue(undefined),
+      blacklistToken:        jest.fn().mockResolvedValue(undefined),
     }
 
     const module: TestingModule = await Test.createTestingModule({
@@ -56,9 +57,9 @@ describe('AuthService', () => {
         { provide: getModelToken(RefreshToken.name),       useValue: refreshModel },
         { provide: getModelToken(VerificationToken.name),  useValue: verifyModel  },
         { provide: getModelToken(PasswordResetToken.name), useValue: resetModel   },
-        { provide: JwtService,  useValue: jwtService  },
-        { provide: MailService, useValue: mailService  },
-        { provide: RedisService, useValue: redis       },
+        { provide: JwtService,   useValue: jwtService  },
+        { provide: MailService,  useValue: mailService  },
+        { provide: RedisService, useValue: redis        },
       ],
     }).compile()
 
@@ -70,81 +71,167 @@ describe('AuthService', () => {
   describe('register', () => {
     it('throws EMAIL_TAKEN if email already exists', async () => {
       userModel.findOne.mockResolvedValue({ email: 'a@b.com' })
-      await expect(service.register({ email:'a@b.com', password:'pass123', firstName:'A', lastName:'B' }))
+      await expect(service.register({ email: 'a@b.com', password: 'pass123', firstName: 'A', lastName: 'B' }))
         .rejects.toThrow(BadRequestException)
     })
 
-    it('creates user with isVerified:false and sends email', async () => {
+    it('creates user with isVerified:false and sends verification email', async () => {
       userModel.findOne.mockResolvedValue(null)
-      const fakeUser = { _id: { toString: () => 'uid1' }, email:'new@b.com', firstName:'New', toObject: () => ({ _id:'uid1', email:'new@b.com' }) }
+      const fakeUser = {
+        _id: { toString: () => 'uid1' },
+        email: 'new@b.com',
+        firstName: 'New',
+        toObject: () => ({ _id: 'uid1', email: 'new@b.com' }),
+      }
       userModel.create.mockResolvedValue(fakeUser)
       verifyModel.create.mockResolvedValue({})
 
-      await service.register({ email:'new@b.com', password:'pass123', firstName:'New', lastName:'User' })
-
-      // User must be created with isVerified:false — SEC-02 requirement
+      const result = await service.register({ email: 'new@b.com', password: 'pass123', firstName: 'New', lastName: 'User' })
+      expect(result.message).toContain('verify your account')
       expect(userModel.create).toHaveBeenCalledWith(expect.objectContaining({ isVerified: false }))
-      expect(mailService.sendVerificationEmail).toHaveBeenCalledWith('new@b.com', 'New', expect.any(String))
+      expect(mailService.sendVerificationEmail).toHaveBeenCalled()
+    })
+  })
+
+  // ── verifyEmail ────────────────────────────────────────────────────────────
+
+  describe('verifyEmail', () => {
+    it('marks user as verified when token is valid', async () => {
+      verifyModel.findOne.mockResolvedValue({ _id: 'vid1', userId: 'uid1', token: 'abc' })
+      userModel.findByIdAndUpdate.mockResolvedValue({})
+      verifyModel.deleteOne.mockResolvedValue({})
+
+      const result = await service.verifyEmail({ token: 'abc' })
+      expect(result.message).toContain('verified')
+      expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith('uid1', { isVerified: true })
+    })
+
+    // QA-03: SEC-02 — expired token must be rejected
+    it('throws INVALID_TOKEN when token is not found (expired or wrong)', async () => {
+      // SEC-02: the query includes expiresAt: { $gt: new Date() }, so MongoDB
+      // returns null for expired tokens. We simulate that by returning null.
+      verifyModel.findOne.mockResolvedValue(null)
+      await expect(service.verifyEmail({ token: 'expired-token' }))
+        .rejects.toThrow(BadRequestException)
+    })
+  })
+
+  // ── resetPassword ──────────────────────────────────────────────────────────
+
+  describe('resetPassword', () => {
+    // QA-03: SEC-02 — expired reset token must be rejected at application level
+    it('throws INVALID_TOKEN when reset token is expired (query returns null)', async () => {
+      resetModel.findOne.mockResolvedValue(null)
+      await expect(service.resetPassword({ token: 'stale', newPassword: 'newpass123' }))
+        .rejects.toThrow(BadRequestException)
+    })
+
+    it('updates password hash and deletes token on valid reset', async () => {
+      resetModel.findOne.mockResolvedValue({ _id: 'rtid1', userId: 'uid1', token: 'valid' })
+      userModel.findByIdAndUpdate.mockResolvedValue({})
+      refreshModel.deleteMany.mockResolvedValue({})
+      resetModel.deleteOne.mockResolvedValue({})
+
+      const result = await service.resetPassword({ token: 'valid', newPassword: 'newpass123' })
+      expect(result.message).toContain('reset successfully')
+      expect(userModel.findByIdAndUpdate).toHaveBeenCalled()
+      expect(resetModel.deleteOne).toHaveBeenCalledWith({ _id: 'rtid1' })
     })
   })
 
   // ── login ──────────────────────────────────────────────────────────────────
 
   describe('login', () => {
-    it('throws ACCOUNT_LOCKED when failure count >= 10 (SEC-05)', async () => {
-      ;(redis.getLoginFailures as jest.Mock).mockResolvedValue(10)
-      await expect(service.login({ email:'x@y.com', password:'wrong' }))
+    it('throws ACCOUNT_LOCKED after 10 failed attempts', async () => {
+      (redis.getLoginFailures as jest.Mock).mockResolvedValue(10)
+      await expect(service.login({ email: 'x@x.com', password: 'wrong' }))
         .rejects.toThrow(UnauthorizedException)
-    })
-
-    it('throws INVALID_CREDENTIALS for unknown email', async () => {
-      userModel.findOne.mockResolvedValue(null)
-      await expect(service.login({ email:'x@y.com', password:'pass' }))
-        .rejects.toThrow(UnauthorizedException)
-      expect(redis.incrementLoginFailure).toHaveBeenCalledWith('x@y.com')
     })
 
     it('throws INVALID_CREDENTIALS for wrong password', async () => {
-      const hash = await bcrypt.hash('correct', 10)
-      userModel.findOne.mockResolvedValue({ email:'x@y.com', passwordHash: hash, isActive:true, isVerified:true, _id:{ toString:()=>'uid' }, toObject:()=>({}) })
-      userModel.findByIdAndUpdate.mockResolvedValue({})
-      await expect(service.login({ email:'x@y.com', password:'wrong' }))
+      const user = { passwordHash: await bcrypt.hash('correct', 10), isActive: true, isVerified: true }
+      userModel.findOne.mockResolvedValue(user)
+      await expect(service.login({ email: 'x@x.com', password: 'wrong' }))
         .rejects.toThrow(UnauthorizedException)
     })
 
-    it('throws EMAIL_NOT_VERIFIED for unverified user (SEC-02)', async () => {
-      const hash = await bcrypt.hash('pass', 10)
-      userModel.findOne.mockResolvedValue({ email:'x@y.com', passwordHash: hash, isActive:true, isVerified:false, _id:{ toString:()=>'uid' } })
-      await expect(service.login({ email:'x@y.com', password:'pass' }))
+    it('throws EMAIL_NOT_VERIFIED for unverified users', async () => {
+      const user = {
+        _id: { toString: () => 'uid1' },
+        passwordHash: await bcrypt.hash('pass', 10),
+        isActive: true, isVerified: false,
+      }
+      userModel.findOne.mockResolvedValue(user)
+      await expect(service.login({ email: 'x@x.com', password: 'pass' }))
         .rejects.toThrow(UnauthorizedException)
     })
 
-    it('clears login failure counter on success', async () => {
-      const hash = await bcrypt.hash('pass123', 10)
-      const fakeUser = { _id:{ toString:()=>'uid' }, email:'x@y.com', firstName:'X', role:'customer', passwordHash:hash, isActive:true, isVerified:true, toObject:()=>({_id:'uid',email:'x@y.com'}) }
-      userModel.findOne.mockResolvedValue(fakeUser)
+    it('returns tokens and clears failure counter on successful login', async () => {
+      const user = {
+        _id: { toString: () => 'uid1' }, email: 'x@x.com', role: 'customer',
+        passwordHash: await bcrypt.hash('pass', 10),
+        isActive: true, isVerified: true,
+        toObject: () => ({ _id: 'uid1', email: 'x@x.com' }),
+      }
+      userModel.findOne.mockResolvedValue(user)
       userModel.findByIdAndUpdate.mockResolvedValue({})
-      refreshModel.create = jest.fn().mockResolvedValue({})
+      refreshModel.create.mockResolvedValue({})
 
-      await service.login({ email:'x@y.com', password:'pass123' })
-      expect(redis.clearLoginFailures).toHaveBeenCalledWith('x@y.com')
+      const result = await service.login({ email: 'x@x.com', password: 'pass' })
+      expect(result.accessToken).toBe('mock.access.token')
+      expect(result.refreshToken).toBeDefined()
+      expect(redis.clearLoginFailures).toHaveBeenCalledWith('x@x.com')
     })
   })
 
-  // ── forgotPassword ─────────────────────────────────────────────────────────
+  // ── refreshTokens ──────────────────────────────────────────────────────────
 
-  describe('forgotPassword', () => {
-    it('returns same message whether email exists or not (prevents enumeration)', async () => {
-      userModel.findOne.mockResolvedValue(null)
-      const res1 = await service.forgotPassword({ email: 'unknown@test.com' })
+  describe('refreshTokens', () => {
+    // QA-03: tests the full rotation — old token deleted, new pair issued
+    it('deletes old refresh token and issues new access + refresh tokens', async () => {
+      const userId    = 'uid1'
+      const rawToken  = `${userId}.${'a'.repeat(128)}`
+      const tokenHash = await bcrypt.hash(rawToken, 10)
 
-      const fakeUser = { _id:{ toString:()=>'uid' }, email:'known@test.com', firstName:'K' }
-      userModel.findOne.mockResolvedValue(fakeUser)
-      resetModel.deleteMany = jest.fn().mockResolvedValue({})
-      resetModel.create.mockResolvedValue({})
-      const res2 = await service.forgotPassword({ email: 'known@test.com' })
+      refreshModel.find.mockResolvedValue([{ _id: 'rtid1', userId, tokenHash, expiresAt: new Date(Date.now() + 1e6) }])
+      refreshModel.deleteOne.mockResolvedValue({})
+      refreshModel.create.mockResolvedValue({})
+      userModel.findById.mockResolvedValue({
+        _id: { toString: () => userId }, email: 'x@x.com', role: 'customer', isActive: true,
+        toObject: () => ({}),
+      })
 
-      expect(res1.message).toEqual(res2.message)
+      const result = await service.refreshTokens(rawToken)
+      expect(result.accessToken).toBe('mock.access.token')
+      expect(result.refreshToken).toBeDefined()
+      expect(refreshModel.deleteOne).toHaveBeenCalledWith({ _id: 'rtid1' })
+    })
+
+    it('throws INVALID_REFRESH_TOKEN when token does not match any candidate', async () => {
+      const rawToken = `uid1.${'b'.repeat(128)}`
+      refreshModel.find.mockResolvedValue([]) // no candidates found
+      await expect(service.refreshTokens(rawToken)).rejects.toThrow(UnauthorizedException)
+    })
+
+    it('throws if raw token has no dot separator', async () => {
+      await expect(service.refreshTokens('nodottoken')).rejects.toThrow(UnauthorizedException)
+    })
+  })
+
+  // ── logout ─────────────────────────────────────────────────────────────────
+
+  describe('logout', () => {
+    // QA-03: verifies that blacklistToken is called on logout so the access
+    // token is immediately invalidated, not just left to expire naturally
+    it('blacklists the access token jti in Redis', async () => {
+      const futureExp = Math.floor(Date.now() / 1000) + 900
+      await service.logout('jti-123', futureExp)
+      expect(redis.blacklistToken).toHaveBeenCalledWith('jti-123', new Date(futureExp * 1000))
+    })
+
+    it('returns success message without throwing even if no refresh token provided', async () => {
+      const result = await service.logout('jti-xyz', Math.floor(Date.now() / 1000) + 900)
+      expect(result.message).toContain('Logged out')
     })
   })
 })

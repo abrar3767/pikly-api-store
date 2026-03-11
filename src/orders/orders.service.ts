@@ -1,6 +1,6 @@
 import {
   Injectable, BadRequestException,
-  NotFoundException, InternalServerErrorException,
+  NotFoundException, InternalServerErrorException, Logger,
 } from '@nestjs/common'
 import { InjectModel }  from '@nestjs/mongoose'
 import { Model }        from 'mongoose'
@@ -18,6 +18,8 @@ import { WebhookService }           from '../webhooks/webhook.service'
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name)
+
   constructor(
     @InjectModel(Order.name)   private readonly orderModel:   Model<OrderDocument>,
     @InjectModel(User.name)    private readonly userModel:    Model<UserDocument>,
@@ -40,8 +42,7 @@ export class OrdersService {
   }
 
   async createOrder(userId: string, dto: CreateOrderDto) {
-    // DES-03: Idempotency key — if the client retries after a network timeout,
-    // return the original order instead of creating a duplicate.
+    // Idempotency key — return original order on client retry
     if (dto.idempotencyKey) {
       const existing = await this.redis.getIdempotencyKey(dto.idempotencyKey)
       if (existing) {
@@ -51,36 +52,43 @@ export class OrdersService {
     }
 
     const cart = await this.cartService.getCart(dto.sessionId)
-    if (cart.isEmpty) throw new BadRequestException({ code:'EMPTY_CART', message:'Cart is empty' })
+    if (cart.isEmpty) throw new BadRequestException({ code: 'EMPTY_CART', message: 'Cart is empty' })
 
     const user = await this.userModel.findById(userId)
-    if (!user) throw new NotFoundException({ code:'USER_NOT_FOUND' })
+    if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND' })
 
     const address = (user.addresses ?? []).find((a: any) => a.id === dto.addressId)
-    if (!address) throw new NotFoundException({ code:'ADDRESS_NOT_FOUND', message:'Address not found' })
+    if (!address) throw new NotFoundException({ code: 'ADDRESS_NOT_FOUND', message: 'Address not found' })
 
-    // Validate address has required fields (SCH-05 guard at service level)
     if (!address.street || !address.city || !address.country) {
-      throw new BadRequestException({ code:'INCOMPLETE_ADDRESS', message:'Shipping address must have street, city, and country' })
+      throw new BadRequestException({ code: 'INCOMPLETE_ADDRESS', message: 'Shipping address must have street, city, and country' })
     }
 
-    // BUG-08 fix: verify coupon is still under its usage limit at checkout time
-    // (it may have been exhausted by concurrent orders since the user applied it).
-    // The actual atomic increment happens after the order is saved (see below).
+    // ── Coupon validation ───────────────────────────────────────────────────
     let couponDoc: any = null
     if (cart.coupon) {
       couponDoc = await this.couponModel.findOne({ code: (cart.coupon as any).code })
-      if (couponDoc && couponDoc.usedCount >= couponDoc.usageLimit) {
-        throw new BadRequestException({ code:'COUPON_LIMIT_REACHED', message:'Coupon usage limit has been reached' })
+
+      if (couponDoc) {
+        // Global limit check
+        if (couponDoc.usedCount >= couponDoc.usageLimit) {
+          throw new BadRequestException({ code: 'COUPON_LIMIT_REACHED', message: 'Coupon usage limit has been reached' })
+        }
+
+        // BUG-03: per-user check at order creation (the definitive enforcement
+        // point, even if the applyCoupon check was skipped for guests)
+        if (couponDoc.usedByUserIds.includes(userId)) {
+          throw new BadRequestException({ code: 'COUPON_ALREADY_USED', message: 'You have already used this coupon.' })
+        }
       }
     }
 
-    // Atomic stock decrement with rollback on partial failure
+    // ── Atomic stock decrement with rollback on partial failure ─────────────
     const decremented: Array<{ productId: string; quantity: number }> = []
     try {
       for (const item of cart.items as any[]) {
         const ok = await this.productsService.decrementStock(item.productId, item.quantity)
-        if (!ok) throw new BadRequestException({ code:'INSUFFICIENT_STOCK', message:`"${item.title}" is no longer available in the requested quantity` })
+        if (!ok) throw new BadRequestException({ code: 'INSUFFICIENT_STOCK', message: `"${item.title}" is no longer available in the requested quantity` })
         decremented.push({ productId: item.productId, quantity: item.quantity })
       }
     } catch (err) {
@@ -88,13 +96,9 @@ export class OrdersService {
       throw err
     }
 
-    const orderId = await this.generateOrderId()
-    const now     = new Date().toISOString()
-
-    // SVC-01 fix: COD orders start as 'pending' — they are only marked 'paid'
-    // when the admin confirms delivery. Card/wallet orders are immediately paid.
+    const orderId       = await this.generateOrderId()
+    const now           = new Date().toISOString()
     const paymentStatus = dto.paymentMethod === 'cod' ? 'pending' : 'paid'
-    // SVC-03 fix: use 'pending' for COD, 'confirmed' for online payments.
     const orderStatus   = dto.paymentMethod === 'cod' ? 'pending' : 'confirmed'
 
     let order: any
@@ -110,51 +114,58 @@ export class OrdersService {
         paymentStatus,
         notes:           dto.notes ?? null,
         timeline: [{ status: orderStatus, timestamp: now, message: orderStatus === 'confirmed' ? 'Order confirmed and payment received' : 'Order placed — awaiting delivery' }],
-        trackingNumber:   null,
+        trackingNumber:    null,
         estimatedDelivery: new Date(Date.now() + 5 * 86_400_000).toISOString(),
       })
     } catch (err) {
       for (const d of decremented) await this.productsService.incrementStock(d.productId, d.quantity)
-      throw new InternalServerErrorException({ code:'ORDER_CREATE_FAILED', message:'Order could not be saved. Please try again.' })
+      throw new InternalServerErrorException({ code: 'ORDER_CREATE_FAILED', message: 'Order could not be saved. Please try again.' })
     }
 
-    // BUG-08 fix: atomic conditional increment — only increments if still under limit
+    // BUG-03: atomic conditional increment of global usedCount + add userId to
+    // usedByUserIds in a single findOneAndUpdate. If the global limit was hit
+    // between our check above and this update (extremely rare race), the $lt
+    // condition fails and we roll back the order.
     if (couponDoc) {
       const result = await this.couponModel.findOneAndUpdate(
-        { code: couponDoc.code, usedCount: { $lt: couponDoc.usageLimit } },
-        { $inc: { usedCount: 1 } },
+        {
+          code:     couponDoc.code,
+          usedCount: { $lt: couponDoc.usageLimit },
+          // Also guard against the per-user check race: only proceed if userId
+          // is still not in usedByUserIds (prevents double-use under concurrent requests)
+          usedByUserIds: { $ne: userId },
+        },
+        {
+          $inc:    { usedCount: 1 },
+          $addToSet: { usedByUserIds: userId },
+        },
         { new: true },
       )
       if (!result) {
-        // Extremely rare: limit hit between our check and save. Cancel the order.
+        // Coupon was exhausted or already used by this user between our check and now
         await this.orderModel.deleteOne({ orderId })
         for (const d of decremented) await this.productsService.incrementStock(d.productId, d.quantity)
-        throw new BadRequestException({ code:'COUPON_LIMIT_REACHED', message:'Coupon usage limit was reached. Please try again without the coupon.' })
+        throw new BadRequestException({ code: 'COUPON_LIMIT_REACHED', message: 'Coupon usage limit was reached. Please try again without the coupon.' })
       }
     }
 
-    // Store idempotency key
     if (dto.idempotencyKey) {
       await this.redis.setIdempotencyKey(dto.idempotencyKey, orderId)
     }
 
     await this.cartService.clearCart(dto.sessionId)
 
-    // FEAT-06: send order confirmation email (non-blocking — never crashes order creation)
     this.mailService.sendOrderConfirmation(user.email, user.firstName, order).catch(() => {})
-
-    // FEAT-05: fire webhook event so registered endpoints are notified
     this.webhookService.dispatch('order.created', {
       orderId: order.orderId, status: order.status,
       paymentMethod: order.paymentMethod, paymentStatus: order.paymentStatus,
       total: order.pricing?.total,
     }).catch(() => {})
 
+    this.logger.log(`Order created: orderId=${orderId} userId=${userId} total=${order.pricing?.total}`)
     return order
   }
 
-  // SVC-02 fix: use MongoDB's own .skip().limit() for pagination instead of
-  // loading all orders into memory and slicing in Node.js.
   async getUserOrders(userId: string, query: { page?:number; limit?:number; status?:string }) {
     const filter: any = { userId: new mongoose.Types.ObjectId(userId) }
     if (query.status) filter.status = query.status
@@ -177,7 +188,7 @@ export class OrdersService {
   async getOrder(orderId: string, requestingUserId: string) {
     const order = await this.orderModel.findOne({ orderId })
     if (!order || order.userId.toString() !== requestingUserId) {
-      throw new NotFoundException({ code:'ORDER_NOT_FOUND', message:`Order ${orderId} not found` })
+      throw new NotFoundException({ code: 'ORDER_NOT_FOUND', message: `Order ${orderId} not found` })
     }
     return order
   }
@@ -185,22 +196,45 @@ export class OrdersService {
   async cancelOrder(orderId: string, requestingUserId: string) {
     const order = await this.orderModel.findOne({ orderId })
     if (!order || order.userId.toString() !== requestingUserId) {
-      throw new NotFoundException({ code:'ORDER_NOT_FOUND', message:`Order ${orderId} not found` })
+      throw new NotFoundException({ code: 'ORDER_NOT_FOUND', message: `Order ${orderId} not found` })
     }
-    if (!['pending','confirmed'].includes(order.status)) {
-      throw new BadRequestException({ code:'CANNOT_CANCEL', message:`Orders with status "${order.status}" cannot be cancelled` })
+    if (!['pending', 'confirmed'].includes(order.status)) {
+      throw new BadRequestException({ code: 'CANNOT_CANCEL', message: `Orders with status "${order.status}" cannot be cancelled` })
     }
-    order.status        = 'cancelled'
-    order.paymentStatus = 'refunded'
-    order.timeline.push({ status:'cancelled', timestamp:new Date().toISOString(), message:'Order cancelled by customer' })
+
+    order.status = 'cancelled'
+
+    // BUG-05: paymentStatus logic corrected:
+    // - COD orders were never charged, so "refunded" is factually wrong — use "cancelled"
+    // - Card/wallet orders require a real refund via the payment gateway; we mark
+    //   "pending_refund" to signal the finance team, not "refunded" (which implies
+    //   the money was already returned to the customer).
+    order.paymentStatus = order.paymentMethod === 'cod' ? 'cancelled' : 'pending_refund'
+
+    order.timeline.push({
+      status:    'cancelled',
+      timestamp: new Date().toISOString(),
+      message:   'Order cancelled by customer',
+    })
+
     await order.save()
+
+    // BUG-05: restore inventory for all items in the cancelled order.
+    // The original implementation forgot this step, permanently consuming stock
+    // for cancelled orders and causing inventory counts to drift lower over time.
+    for (const item of order.items as any[]) {
+      await this.productsService.incrementStock((item as any).productId, (item as any).quantity)
+    }
+
+    this.logger.log(`Order cancelled: orderId=${orderId} userId=${requestingUserId} method=${order.paymentMethod}`)
+    this.webhookService.dispatch('order.cancelled', { orderId: order.orderId }).catch(() => {})
     return order
   }
 
   async trackOrder(orderId: string, requestingUserId: string) {
     const order = await this.orderModel.findOne({ orderId })
     if (!order || order.userId.toString() !== requestingUserId) {
-      throw new NotFoundException({ code:'ORDER_NOT_FOUND', message:`Order ${orderId} not found` })
+      throw new NotFoundException({ code: 'ORDER_NOT_FOUND', message: `Order ${orderId} not found` })
     }
     return {
       orderId:           order.orderId,
@@ -209,18 +243,17 @@ export class OrdersService {
       trackingNumber:    order.trackingNumber,
       estimatedDelivery: order.estimatedDelivery,
       shippingAddress:   order.shippingAddress,
-      currentStep:       ['pending','confirmed','processing','shipped','delivered','cancelled'].indexOf(order.status),
+      currentStep: ['pending','confirmed','processing','shipped','delivered','cancelled'].indexOf(order.status),
     }
   }
 
-  // FEAT-02: pre-checkout shipping cost calculation
   async calculateShipping(sessionId: string, addressId: string, userId: string) {
     const cart = await this.cartService.getCart(sessionId)
     const user = await this.userModel.findById(userId)
-    if (!user) throw new NotFoundException({ code:'USER_NOT_FOUND' })
+    if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND' })
 
     const address = (user.addresses ?? []).find((a: any) => a.id === addressId)
-    if (!address) throw new NotFoundException({ code:'ADDRESS_NOT_FOUND' })
+    if (!address) throw new NotFoundException({ code: 'ADDRESS_NOT_FOUND' })
 
     const subtotal        = cart.pricing.subtotal
     const threshold       = parseFloat(process.env.FREE_SHIPPING_THRESHOLD ?? '50')
@@ -232,8 +265,8 @@ export class OrdersService {
     return {
       subtotal,
       options: [
-        { method:'standard', cost:shippingStandard, label:shippingStandard===0 ? 'Free Standard Shipping' : `Standard Shipping ($${shippingStandard})`, days:'3-7' },
-        { method:'express',  cost:shippingExpress,  label:`Express Shipping ($${shippingExpress})`, days:'1-2' },
+        { method: 'standard', cost: shippingStandard, label: shippingStandard === 0 ? 'Free Standard Shipping' : `Standard Shipping ($${shippingStandard})`, days: '3-7' },
+        { method: 'express',  cost: shippingExpress,  label: `Express Shipping ($${shippingExpress})`, days: '1-2' },
       ],
       tax:   cart.pricing.tax,
       total: parseFloat((subtotal + shippingStandard + cart.pricing.tax - (cart.pricing.discount ?? 0)).toFixed(2)),

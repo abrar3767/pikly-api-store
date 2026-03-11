@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, Query, UseGuards, BadRequestException } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { AuthGuard }   from '@nestjs/passport'
 import { InjectModel } from '@nestjs/mongoose'
@@ -9,7 +9,22 @@ import { Order,  OrderDocument  } from '../database/order.schema'
 import { User,   UserDocument   } from '../database/user.schema'
 import { successResponse }        from '../common/api-utils'
 
-// FEAT-07: Revenue and sales analytics endpoints
+// Parses a date string and throws a 400 if it is not a valid ISO 8601 date.
+// Using new Date(str) directly is dangerous because new Date("garbage") produces
+// an Invalid Date object rather than throwing, and MongoDB treats Invalid Date
+// as null in match expressions — meaning { $gte: null } matches everything.
+function parseDateParam(value: string | undefined, paramName: string): Date | undefined {
+  if (value === undefined) return undefined
+  const d = new Date(value)
+  if (isNaN(d.getTime())) {
+    throw new BadRequestException({
+      code:    'INVALID_DATE',
+      message: `Query parameter "${paramName}" must be a valid ISO 8601 date string (e.g. 2024-01-15T00:00:00Z)`,
+    })
+  }
+  return d
+}
+
 @ApiTags('Admin — Analytics')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -23,21 +38,25 @@ export class AdminAnalyticsController {
 
   @Get('revenue')
   @ApiOperation({ summary: '[Admin] Revenue summary — total, AOV, by date range' })
-  @ApiQuery({ name: 'from', required: false, description: 'ISO date string' })
-  @ApiQuery({ name: 'to',   required: false, description: 'ISO date string' })
+  @ApiQuery({ name: 'from', required: false, description: 'ISO 8601 date string' })
+  @ApiQuery({ name: 'to',   required: false, description: 'ISO 8601 date string' })
   async revenue(@Query('from') from?: string, @Query('to') to?: string) {
+    // BUG-04: validate before use — invalid dates are rejected with a 400
+    const fromDate = parseDateParam(from, 'from')
+    const toDate   = parseDateParam(to, 'to')
+
     const match: any = { status: { $nin: ['cancelled'] } }
-    if (from || to) {
+    if (fromDate || toDate) {
       match.createdAt = {}
-      if (from) match.createdAt.$gte = new Date(from)
-      if (to)   match.createdAt.$lte = new Date(to)
+      if (fromDate) match.createdAt.$gte = fromDate
+      if (toDate)   match.createdAt.$lte = toDate
     }
 
     const [result] = await this.orderModel.aggregate([
       { $match: match },
       {
         $group: {
-          _id:        null,
+          _id:          null,
           totalRevenue:   { $sum: '$pricing.total'    },
           totalOrders:    { $sum: 1                   },
           avgOrderValue:  { $avg: '$pricing.total'    },
@@ -57,7 +76,7 @@ export class AdminAnalyticsController {
 
   @Get('revenue-by-day')
   @ApiOperation({ summary: '[Admin] Daily revenue for the last N days' })
-  @ApiQuery({ name: 'days', required: false, description: 'Default: 30' })
+  @ApiQuery({ name: 'days', required: false, description: 'Default: 30, max: 365' })
   async revenueByDay(@Query('days') days?: number) {
     const d    = Math.min(365, Math.max(1, Number(days ?? 30)))
     const from = new Date(Date.now() - d * 86_400_000)
@@ -93,9 +112,9 @@ export class AdminAnalyticsController {
       {
         $group: {
           _id:       '$items.productId',
-          title:     { $first: '$items.title'    },
-          revenue:   { $sum:  '$items.subtotal'  },
-          unitsSold: { $sum:  '$items.quantity'  },
+          title:     { $first: '$items.title'   },
+          revenue:   { $sum:   '$items.subtotal' },
+          unitsSold: { $sum:   '$items.quantity' },
           orders:    { $sum:   1                 },
         },
       },
@@ -103,27 +122,22 @@ export class AdminAnalyticsController {
       { $limit: l },
     ])
 
-    return successResponse(data.map(d => ({
-      productId: d._id,
-      title:     d.title,
-      revenue:   parseFloat((d.revenue ?? 0).toFixed(2)),
-      unitsSold: d.unitsSold,
-      orders:    d.orders,
+    return successResponse(data.map(row => ({
+      productId: row._id, title: row.title,
+      revenue:   parseFloat((row.revenue ?? 0).toFixed(2)),
+      unitsSold: row.unitsSold, orders: row.orders,
     })))
   }
 
-  @Get('customers')
-  @ApiOperation({ summary: '[Admin] Customer stats — total, new this month' })
-  async customerStats() {
-    const startOfMonth = new Date()
-    startOfMonth.setDate(1)
-    startOfMonth.setHours(0, 0, 0, 0)
-
-    const [total, newThisMonth] = await Promise.all([
-      this.userModel.countDocuments({ role: 'customer' }),
-      this.userModel.countDocuments({ role: 'customer', createdAt: { $gte: startOfMonth } }),
+  @Get('users')
+  @ApiOperation({ summary: '[Admin] User growth and registration stats' })
+  async userStats() {
+    const [total, verified, active, admins] = await Promise.all([
+      this.userModel.countDocuments({}),
+      this.userModel.countDocuments({ isVerified: true }),
+      this.userModel.countDocuments({ isActive: true }),
+      this.userModel.countDocuments({ role: 'admin' }),
     ])
-
-    return successResponse({ total, newThisMonth, returning: total - newThisMonth })
+    return successResponse({ total, verified, active, admins, unverified: total - verified })
   }
 }
