@@ -1,12 +1,21 @@
 import {
-  Controller, Get, Post, Patch, Delete,
-  Body, Query, Param, UseGuards, Request, BadRequestException,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Query,
+  Param,
+  UseGuards,
+  Request,
+  BadRequestException,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiBearerAuth } from '@nestjs/swagger'
-import { CartService }       from './cart.service'
-import { OptionalJwtGuard }  from '../common/guards/optional-jwt.guard'
-import { AuthGuard }         from '@nestjs/passport'
-import { successResponse }   from '../common/api-utils'
+import { CartService } from './cart.service'
+import { OptionalJwtGuard } from '../common/guards/optional-jwt.guard'
+import { AuthGuard } from '@nestjs/passport'
+import { successResponse } from '../common/api-utils'
 import { AddToCartDto, UpdateCartDto, ApplyCouponDto, MergeCartDto } from './dto/cart.dto'
 
 // Maximum length and character set for a guest session ID.
@@ -14,7 +23,7 @@ import { AddToCartDto, UpdateCartDto, ApplyCouponDto, MergeCartDto } from './dto
 const SESSION_ID_REGEX = /^[a-zA-Z0-9_\-:]{8,128}$/
 
 @ApiTags('Cart')
-@UseGuards(OptionalJwtGuard)   // SEC-04: validates JWT when present, passes through for guests
+@UseGuards(OptionalJwtGuard) // SEC-04: validates JWT when present, passes through for guests
 @ApiBearerAuth()
 @Controller('cart')
 export class CartController {
@@ -38,8 +47,9 @@ export class CartController {
     const sid = req.headers['x-session-id'] ?? clientSid ?? ''
     if (!sid || !SESSION_ID_REGEX.test(sid)) {
       throw new BadRequestException({
-        code:    'INVALID_SESSION',
-        message: 'A valid X-Session-ID header (8–128 alphanumeric characters) is required for guest carts.',
+        code: 'INVALID_SESSION',
+        message:
+          'A valid X-Session-ID header (8–128 alphanumeric characters) is required for guest carts.',
       })
     }
     return sid
@@ -47,10 +57,14 @@ export class CartController {
 
   @Get()
   @ApiOperation({ summary: 'Get cart contents' })
-  @ApiQuery({ name: 'sessionId', required: false, description: 'Guest session ID (ignored when authenticated)' })
+  @ApiQuery({
+    name: 'sessionId',
+    required: false,
+    description: 'Guest session ID (ignored when authenticated)',
+  })
   async getCart(@Request() req: any, @Query('sessionId') sid?: string) {
     const sessionId = this.resolveSessionId(req, sid)
-    const data      = await this.cartService.getCart(sessionId)
+    const data = await this.cartService.getCart(sessionId)
     return successResponse(data)
   }
 
@@ -58,7 +72,7 @@ export class CartController {
   @ApiOperation({ summary: 'Add item to cart' })
   async addItem(@Request() req: any, @Body() dto: AddToCartDto) {
     const sessionId = this.resolveSessionId(req, dto.sessionId)
-    const data      = await this.cartService.addItem({ ...dto, sessionId })
+    const data = await this.cartService.addItem({ ...dto, sessionId })
     return successResponse(data)
   }
 
@@ -66,7 +80,7 @@ export class CartController {
   @ApiOperation({ summary: 'Update item quantity (0 = remove)' })
   async updateItem(@Request() req: any, @Body() dto: UpdateCartDto) {
     const sessionId = this.resolveSessionId(req, dto.sessionId)
-    const data      = await this.cartService.updateItem({ ...dto, sessionId })
+    const data = await this.cartService.updateItem({ ...dto, sessionId })
     return successResponse(data)
   }
 
@@ -82,7 +96,7 @@ export class CartController {
     @Query('variantId') variantId?: string,
   ) {
     const sessionId = this.resolveSessionId(req, sid)
-    const data      = await this.cartService.removeItem({ productId, variantId, sessionId })
+    const data = await this.cartService.removeItem({ productId, variantId, sessionId })
     return successResponse(data)
   }
 
@@ -91,8 +105,8 @@ export class CartController {
   async applyCoupon(@Request() req: any, @Body() dto: ApplyCouponDto) {
     const sessionId = this.resolveSessionId(req, dto.sessionId)
     // Pass the authenticated userId so per-user coupon usage can be checked
-    const userId    = req.user?.userId ?? null
-    const data      = await this.cartService.applyCoupon({ ...dto, sessionId }, userId)
+    const userId = req.user?.userId ?? null
+    const data = await this.cartService.applyCoupon({ ...dto, sessionId }, userId)
     return successResponse(data)
   }
 
@@ -101,7 +115,7 @@ export class CartController {
   @ApiQuery({ name: 'sessionId', required: false })
   async removeCoupon(@Request() req: any, @Query('sessionId') sid?: string) {
     const sessionId = this.resolveSessionId(req, sid)
-    const data      = await this.cartService.removeCoupon(sessionId)
+    const data = await this.cartService.removeCoupon(sessionId)
     return successResponse(data)
   }
 
@@ -114,7 +128,7 @@ export class CartController {
     const userSessionId = `user:${req.user.userId}`
     const data = await this.cartService.mergeCart({
       ...dto,
-      userId: userSessionId,   // SEC-04: use derived session, not caller-supplied userId
+      userId: userSessionId, // SEC-04: use derived session, not caller-supplied userId
     })
     return successResponse(data)
   }
@@ -124,7 +138,7 @@ export class CartController {
   @ApiQuery({ name: 'sessionId', required: false })
   async getSummary(@Request() req: any, @Query('sessionId') sid?: string) {
     const sessionId = this.resolveSessionId(req, sid)
-    const data      = await this.cartService.getSummary(sessionId)
+    const data = await this.cartService.getSummary(sessionId)
     return successResponse(data)
   }
 

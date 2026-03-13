@@ -1,12 +1,11 @@
 import { Controller, Get, Query } from '@nestjs/common'
-import { ApiTags, ApiOperation }  from '@nestjs/swagger'
+import { ApiTags, ApiOperation } from '@nestjs/swagger'
 import { CategoryShowcaseService } from './category-showcase.service'
-import { CategoryShowcaseDto }     from './dto/category-showcase.dto'
+import { CategoryShowcaseDto } from './dto/category-showcase.dto'
 
 @ApiTags('Category Showcase')
 @Controller('category-showcase')
 export class CategoryShowcaseController {
-
   constructor(private readonly service: CategoryShowcaseService) {}
 
   @Get()
@@ -33,10 +32,10 @@ Query params:
         categories: result.categories,
       },
       meta: {
-        pagination:      result.pagination,
-        productsPerBox:  dto.productsLimit ?? 4,
-        timestamp:       new Date().toISOString(),
-        version:         '1.0.0',
+        pagination: result.pagination,
+        productsPerBox: dto.productsLimit ?? 4,
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
       },
     }
   }

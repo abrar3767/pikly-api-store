@@ -8,30 +8,30 @@ export class Product {
   // PERF-04: the `id` field is the primary application-level key used in every
   // cart, stock, and admin operation. Without an index, each findOne({ id }) is
   // a full collection scan. The index turns it into an O(log n) lookup.
-  @Prop({ required: true, unique: true, index: true }) id:            string
-  @Prop({ required: true, unique: true })              slug:          string
-  @Prop({ required: true })                            title:         string
-  @Prop()                                              brand:         string
-  @Prop()                                              category:      string
-  @Prop()                                              subcategory:   string
-  @Prop()                                              subSubcategory: string
-  @Prop()                                              description:   string
-  @Prop({ type: [String], default: [] })               tags:          string[]
-  @Prop({ type: Object })                              pricing:       any
-  @Prop({ type: Object })                              inventory:     any
-  @Prop({ type: Object })                              media:         any
-  @Prop({ type: Object })                              ratings:       any
-  @Prop({ type: Object })                              shipping:      any
-  @Prop({ type: Object })                              attributes:    any
-  @Prop({ type: [Object], default: [] })               variants:      any[]
-  @Prop({ type: [Object], default: [] })               reviews:       any[]
-  @Prop({ default: false }) featured:   boolean
+  @Prop({ required: true, unique: true, index: true }) id: string
+  @Prop({ required: true, unique: true }) slug: string
+  @Prop({ required: true }) title: string
+  @Prop() brand: string
+  @Prop() category: string
+  @Prop() subcategory: string
+  @Prop() subSubcategory: string
+  @Prop() description: string
+  @Prop({ type: [String], default: [] }) tags: string[]
+  @Prop({ type: Object }) pricing: any
+  @Prop({ type: Object }) inventory: any
+  @Prop({ type: Object }) media: any
+  @Prop({ type: Object }) ratings: any
+  @Prop({ type: Object }) shipping: any
+  @Prop({ type: Object }) attributes: any
+  @Prop({ type: [Object], default: [] }) variants: any[]
+  @Prop({ type: [Object], default: [] }) reviews: any[]
+  @Prop({ default: false }) featured: boolean
   @Prop({ default: false }) bestSeller: boolean
   @Prop({ default: false }) newArrival: boolean
-  @Prop({ default: false }) trending:   boolean
-  @Prop({ default: false }) topRated:   boolean
-  @Prop({ default: false }) onSale:     boolean
-  @Prop({ default: true  }) isActive:   boolean
+  @Prop({ default: false }) trending: boolean
+  @Prop({ default: false }) topRated: boolean
+  @Prop({ default: false }) onSale: boolean
+  @Prop({ default: true }) isActive: boolean
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product)

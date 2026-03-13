@@ -1,21 +1,30 @@
 import {
-  Injectable, BadRequestException,
-  UnauthorizedException, NotFoundException,
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { JwtService }  from '@nestjs/jwt'
-import { Model }       from 'mongoose'
-import * as bcrypt     from 'bcrypt'
-import * as crypto     from 'crypto'
-import { User,               UserDocument               } from '../database/user.schema'
-import { RefreshToken,       RefreshTokenDocument       } from '../database/refresh-token.schema'
-import { VerificationToken,  VerificationTokenDocument  } from '../database/verification-token.schema'
-import { PasswordResetToken, PasswordResetTokenDocument } from '../database/password-reset-token.schema'
-import { MailService }  from '../mail/mail.service'
+import { JwtService } from '@nestjs/jwt'
+import { Model } from 'mongoose'
+import * as bcrypt from 'bcrypt'
+import * as crypto from 'crypto'
+import { User, UserDocument } from '../database/user.schema'
+import { RefreshToken, RefreshTokenDocument } from '../database/refresh-token.schema'
+import { VerificationToken, VerificationTokenDocument } from '../database/verification-token.schema'
+import {
+  PasswordResetToken,
+  PasswordResetTokenDocument,
+} from '../database/password-reset-token.schema'
+import { MailService } from '../mail/mail.service'
 import { RedisService } from '../redis/redis.service'
 import {
-  RegisterDto, LoginDto, ForgotPasswordDto,
-  ResetPasswordDto, VerifyEmailDto, ChangePasswordDto,
+  RegisterDto,
+  LoginDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyEmailDto,
+  ChangePasswordDto,
 } from './dto/auth.dto'
 
 @Injectable()
@@ -33,9 +42,9 @@ export class AuthService {
     @InjectModel(PasswordResetToken.name)
     private readonly passwordResetTokenModel: Model<PasswordResetTokenDocument>,
 
-    private readonly jwtService:  JwtService,
+    private readonly jwtService: JwtService,
     private readonly mailService: MailService,
-    private readonly redis:       RedisService,
+    private readonly redis: RedisService,
   ) {}
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -48,17 +57,17 @@ export class AuthService {
 
   private signAccess(user: any): string {
     return this.jwtService.sign({
-      sub:   user._id.toString(),
+      sub: user._id.toString(),
       email: user.email,
-      role:  user.role,
-      jti:   crypto.randomUUID(),
+      role: user.role,
+      jti: crypto.randomUUID(),
     })
   }
 
   private async createRefreshToken(userId: string): Promise<string> {
-    const raw  = `${userId}.${crypto.randomBytes(64).toString('hex')}`
+    const raw = `${userId}.${crypto.randomBytes(64).toString('hex')}`
     const hash = await bcrypt.hash(raw, 10)
-    const exp  = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    const exp = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     await this.refreshTokenModel.create({ userId, tokenHash: hash, expiresAt: exp })
     return raw
   }
@@ -67,21 +76,29 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const existing = await this.userModel.findOne({ email: dto.email.toLowerCase() })
-    if (existing) throw new BadRequestException({ code: 'EMAIL_TAKEN', message: 'Email already registered' })
+    if (existing)
+      throw new BadRequestException({ code: 'EMAIL_TAKEN', message: 'Email already registered' })
 
     const hash = await bcrypt.hash(dto.password, 12)
     const user = await this.userModel.create({
-      email: dto.email.toLowerCase(), passwordHash: hash,
-      firstName: dto.firstName, lastName: dto.lastName,
-      isVerified: false, isActive: true, role: 'customer',
-      addresses: [], wishlist: [], recentlyViewed: [], loyaltyPoints: 0,
+      email: dto.email.toLowerCase(),
+      passwordHash: hash,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      isVerified: false,
+      isActive: true,
+      role: 'customer',
+      addresses: [],
+      wishlist: [],
+      recentlyViewed: [],
+      loyaltyPoints: 0,
       lastLogin: new Date(),
     })
 
     const verToken = crypto.randomBytes(32).toString('hex')
     await this.verificationTokenModel.create({
-      userId:    user._id.toString(),
-      token:     verToken,
+      userId: user._id.toString(),
+      token: verToken,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     })
     await this.mailService.sendVerificationEmail(user.email, user.firstName, verToken)
@@ -97,13 +114,14 @@ export class AuthService {
 
   async verifyEmail(dto: VerifyEmailDto) {
     const record = await this.verificationTokenModel.findOne({
-      token:     dto.token,
-      expiresAt: { $gt: new Date() },   // SEC-02: explicit expiry check
+      token: dto.token,
+      expiresAt: { $gt: new Date() }, // SEC-02: explicit expiry check
     })
-    if (!record) throw new BadRequestException({
-      code:    'INVALID_TOKEN',
-      message: 'Verification link is invalid or has expired',
-    })
+    if (!record)
+      throw new BadRequestException({
+        code: 'INVALID_TOKEN',
+        message: 'Verification link is invalid or has expired',
+      })
 
     await this.userModel.findByIdAndUpdate(record.userId, { isVerified: true })
     await this.verificationTokenModel.deleteOne({ _id: record._id })
@@ -114,26 +132,35 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const failures = await this.redis.getLoginFailures(dto.email)
-    if (failures >= 10) throw new UnauthorizedException({
-      code:    'ACCOUNT_LOCKED',
-      message: 'Too many failed attempts. Account locked for 15 minutes.',
-    })
+    if (failures >= 10)
+      throw new UnauthorizedException({
+        code: 'ACCOUNT_LOCKED',
+        message: 'Too many failed attempts. Account locked for 15 minutes.',
+      })
 
-    const user  = await this.userModel.findOne({ email: dto.email.toLowerCase() })
+    const user = await this.userModel.findOne({ email: dto.email.toLowerCase() })
     const valid = user ? await bcrypt.compare(dto.password, user.passwordHash) : false
 
     if (!user || !valid) {
       await this.redis.incrementLoginFailure(dto.email)
-      throw new UnauthorizedException({ code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' })
+      throw new UnauthorizedException({
+        code: 'INVALID_CREDENTIALS',
+        message: 'Invalid email or password',
+      })
     }
 
-    if (!user.isActive)   throw new UnauthorizedException({ code: 'ACCOUNT_BANNED',        message: 'Account suspended' })
-    if (!user.isVerified) throw new UnauthorizedException({ code: 'EMAIL_NOT_VERIFIED',    message: 'Please verify your email before logging in.' })
+    if (!user.isActive)
+      throw new UnauthorizedException({ code: 'ACCOUNT_BANNED', message: 'Account suspended' })
+    if (!user.isVerified)
+      throw new UnauthorizedException({
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Please verify your email before logging in.',
+      })
 
     await this.redis.clearLoginFailures(dto.email)
     await this.userModel.findByIdAndUpdate(user._id, { lastLogin: new Date() })
 
-    const accessToken  = this.signAccess(user)
+    const accessToken = this.signAccess(user)
     const refreshToken = await this.createRefreshToken(user._id.toString())
     return { user: this.safe(user), accessToken, refreshToken, expiresIn: '15m' }
   }
@@ -143,14 +170,19 @@ export class AuthService {
   async refreshTokens(rawRefreshToken: string) {
     const dotIdx = rawRefreshToken.indexOf('.')
     if (dotIdx === -1) {
-      throw new UnauthorizedException({ code: 'INVALID_REFRESH_TOKEN', message: 'Refresh token is invalid or expired' })
+      throw new UnauthorizedException({
+        code: 'INVALID_REFRESH_TOKEN',
+        message: 'Refresh token is invalid or expired',
+      })
     }
     const userId = rawRefreshToken.slice(0, dotIdx)
 
-    const candidates = await this.refreshTokenModel.find({
-      userId,
-      expiresAt: { $gt: new Date() },
-    }).lean()
+    const candidates = await this.refreshTokenModel
+      .find({
+        userId,
+        expiresAt: { $gt: new Date() },
+      })
+      .lean()
 
     let matchedDoc: any = null
     for (const doc of candidates) {
@@ -160,13 +192,17 @@ export class AuthService {
       }
     }
 
-    if (!matchedDoc) throw new UnauthorizedException({ code: 'INVALID_REFRESH_TOKEN', message: 'Refresh token is invalid or expired' })
+    if (!matchedDoc)
+      throw new UnauthorizedException({
+        code: 'INVALID_REFRESH_TOKEN',
+        message: 'Refresh token is invalid or expired',
+      })
 
     const user = await this.userModel.findById(matchedDoc.userId)
     if (!user || !user.isActive) throw new UnauthorizedException({ code: 'USER_INACTIVE' })
 
     await this.refreshTokenModel.deleteOne({ _id: matchedDoc._id })
-    const accessToken  = this.signAccess(user)
+    const accessToken = this.signAccess(user)
     const refreshToken = await this.createRefreshToken(user._id.toString())
     return { accessToken, refreshToken, expiresIn: '15m' }
   }
@@ -181,10 +217,12 @@ export class AuthService {
       const dotIdx = rawRefreshToken.indexOf('.')
       if (dotIdx !== -1) {
         const userId = rawRefreshToken.slice(0, dotIdx)
-        const candidates = await this.refreshTokenModel.find({
-          userId,
-          expiresAt: { $gt: new Date() },
-        }).lean()
+        const candidates = await this.refreshTokenModel
+          .find({
+            userId,
+            expiresAt: { $gt: new Date() },
+          })
+          .lean()
         for (const doc of candidates) {
           if (await bcrypt.compare(rawRefreshToken, doc.tokenHash)) {
             await this.refreshTokenModel.deleteOne({ _id: doc._id })
@@ -204,7 +242,7 @@ export class AuthService {
       await this.passwordResetTokenModel.deleteMany({ userId: user._id.toString() })
       const token = crypto.randomBytes(32).toString('hex')
       await this.passwordResetTokenModel.create({
-        userId:    user._id.toString(),
+        userId: user._id.toString(),
         token,
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
       })
@@ -222,13 +260,14 @@ export class AuthService {
 
   async resetPassword(dto: ResetPasswordDto) {
     const record = await this.passwordResetTokenModel.findOne({
-      token:     dto.token,
-      expiresAt: { $gt: new Date() },   // SEC-02: explicit expiry check
+      token: dto.token,
+      expiresAt: { $gt: new Date() }, // SEC-02: explicit expiry check
     })
-    if (!record) throw new BadRequestException({
-      code:    'INVALID_TOKEN',
-      message: 'Reset link is invalid or has expired',
-    })
+    if (!record)
+      throw new BadRequestException({
+        code: 'INVALID_TOKEN',
+        message: 'Reset link is invalid or has expired',
+      })
 
     const newHash = await bcrypt.hash(dto.newPassword, 12)
     await this.userModel.findByIdAndUpdate(record.userId, { passwordHash: newHash })
@@ -243,7 +282,11 @@ export class AuthService {
     const user = await this.userModel.findById(userId)
     if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND' })
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash)
-    if (!valid) throw new BadRequestException({ code: 'WRONG_PASSWORD', message: 'Current password is incorrect' })
+    if (!valid)
+      throw new BadRequestException({
+        code: 'WRONG_PASSWORD',
+        message: 'Current password is incorrect',
+      })
 
     const newHash = await bcrypt.hash(dto.newPassword, 12)
     await this.userModel.findByIdAndUpdate(userId, { passwordHash: newHash })
@@ -259,7 +302,8 @@ export class AuthService {
       await this.verificationTokenModel.deleteMany({ userId: user._id.toString() })
       const token = crypto.randomBytes(32).toString('hex')
       await this.verificationTokenModel.create({
-        userId: user._id.toString(), token,
+        userId: user._id.toString(),
+        token,
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       })
       await this.mailService.sendVerificationEmail(user.email, user.firstName, token)

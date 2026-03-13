@@ -1,47 +1,47 @@
-import { IsOptional, IsNumber, IsString, IsBoolean } from "class-validator";
-import { Transform, Type } from "class-transformer";
-import { ApiPropertyOptional } from "@nestjs/swagger";
+import { IsOptional, IsNumber, IsString, IsBoolean } from 'class-validator'
+import { Transform, Type } from 'class-transformer'
+import { ApiPropertyOptional } from '@nestjs/swagger'
 
 export class ReviewQueryDto {
   @ApiPropertyOptional({
-    description: "Page number — use either page OR cursor, not both",
+    description: 'Page number — use either page OR cursor, not both',
   })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  page?: number;
+  page?: number
 
-  @ApiPropertyOptional({ description: "Reviews per page (default: 10)" })
+  @ApiPropertyOptional({ description: 'Reviews per page (default: 10)' })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  limit?: number;
+  limit?: number
 
   @ApiPropertyOptional({
-    description: "Sort: newest | helpful | rating_high | rating_low",
+    description: 'Sort: newest | helpful | rating_high | rating_low',
   })
   @IsOptional()
   @IsString()
-  sort?: string;
+  sort?: string
 
-  @ApiPropertyOptional({ description: "Filter by star rating (1-5)" })
+  @ApiPropertyOptional({ description: 'Filter by star rating (1-5)' })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  rating?: number;
+  rating?: number
 
-  @ApiPropertyOptional({ description: "Only verified purchase reviews" })
+  @ApiPropertyOptional({ description: 'Only verified purchase reviews' })
   @IsOptional()
-  @Transform(({ value }) => value === "true" || value === true)
+  @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
-  verified?: boolean;
+  verified?: boolean
 
   @ApiPropertyOptional({
     description:
-      "Cursor for cursor-based pagination — pass nextCursor from previous response. Use either cursor OR page, not both.",
-    example: "cHJvZF8wMDIx",
+      'Cursor for cursor-based pagination — pass nextCursor from previous response. Use either cursor OR page, not both.',
+    example: 'cHJvZF8wMDIx',
   })
   @IsOptional()
   @IsString()
-  cursor?: string;
+  cursor?: string
 }

@@ -5,34 +5,64 @@ import slugify from 'slugify'
 
 const KEY = '5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE'
 
+// Unsplash direct image IDs (images.unsplash.com) — work without API for fallback
+const UNSPLASH_IMAGE_IDS = [
+  '1523275335684-37898b6baf30',
+  '1505740420925-f5e8c1ef78d0',
+  '1542291026-7eec264c27ff',
+  '1526170375425-6d350f0d4fee',
+  '1496181133206-3c38557e2fa4',
+  '1572635198757-5cf81437daab',
+  '1585386959984-a915522a31eb',
+  '1546868871-7041f2a55e12',
+  '1510557880182-3d4d3c35b5b3',
+  '1606107557195-0e29a4b5b4aa',
+]
+
+function unsplashUrl(id: string, w: number, h: number = w): string {
+  return `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&auto=format`
+}
+
+function pickUnsplashId(keyword: string): string {
+  let h = 0
+  for (let i = 0; i < keyword.length; i++) h = (h << 5) - h + keyword.charCodeAt(i)
+  const idx = Math.abs(h) % UNSPLASH_IMAGE_IDS.length
+  return UNSPLASH_IMAGE_IDS[idx]
+}
+
 // ─── Unsplash image fetcher ───────────────────────────────────────────────────
 async function fetchImage(keyword: string) {
   await new Promise(r => setTimeout(r, 600))
+  const fallbackId = pickUnsplashId(keyword)
+  const fallback = {
+    thumb: unsplashUrl(fallbackId, 200),
+    small: unsplashUrl(fallbackId, 400),
+    regular: unsplashUrl(fallbackId, 1080),
+    full: unsplashUrl(fallbackId, 2000),
+    raw: unsplashUrl(fallbackId, 4000),
+    htmlLink: 'https://unsplash.com',
+    download: 'https://unsplash.com',
+  }
   try {
     const res = await fetch(
-      `https://api.unsplash.com/photos/random?query=${keyword}&client_id=${KEY}`
+      `https://api.unsplash.com/photos/random?query=${encodeURIComponent(keyword)}&client_id=${KEY}`,
     )
     const data = await res.json()
-    return {
-      thumb:    data.urls?.thumb    ?? `https://via.placeholder.com/200x200?text=${keyword}`,
-      small:    data.urls?.small    ?? `https://via.placeholder.com/400x400?text=${keyword}`,
-      regular:  data.urls?.regular  ?? `https://via.placeholder.com/1080x1080?text=${keyword}`,
-      full:     data.urls?.full     ?? `https://via.placeholder.com/2000x2000?text=${keyword}`,
-      raw:      data.urls?.raw      ?? `https://via.placeholder.com/4000x4000?text=${keyword}`,
-      htmlLink: data.links?.html    ?? `https://unsplash.com`,
-      download: data.links?.download ?? `https://unsplash.com`,
+    if (data.urls?.thumb && data.urls?.small) {
+      return {
+        thumb: data.urls.thumb,
+        small: data.urls.small,
+        regular: data.urls.regular ?? fallback.regular,
+        full: data.urls.full ?? fallback.full,
+        raw: data.urls.raw ?? fallback.raw,
+        htmlLink: data.links?.html ?? 'https://unsplash.com',
+        download: data.links?.download ?? 'https://unsplash.com',
+      }
     }
   } catch {
-    return {
-      thumb:    `https://via.placeholder.com/200x200?text=${keyword}`,
-      small:    `https://via.placeholder.com/400x400?text=${keyword}`,
-      regular:  `https://via.placeholder.com/1080x1080?text=${keyword}`,
-      full:     `https://via.placeholder.com/2000x2000?text=${keyword}`,
-      raw:      `https://via.placeholder.com/4000x4000?text=${keyword}`,
-      htmlLink: 'https://unsplash.com',
-      download: 'https://unsplash.com',
-    }
+    /* use fallback */
   }
+  return fallback
 }
 
 // ─── Counter ──────────────────────────────────────────────────────────────────
@@ -1092,25 +1122,28 @@ async function makeWatches() {
   }))
 }
 
+// Direct Unsplash image URL for category/avatar/banner (displayable in browser)
+const UNSPLASH_CAT_IMG = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format'
+
 // ─── CATEGORIES ───────────────────────────────────────────────────────────────
 function makeCategories() {
   return [
-    { id: 'cat_001', name: 'Electronics', slug: 'electronics', parentId: null, level: 0, image: 'https://api.unsplash.com/photos/random?query=electronics&client_id=' + KEY, icon: 'Zap', description: 'Latest gadgets, laptops, phones and audio devices.', productCount: 33, isActive: true, isFeatured: true, sortOrder: 1, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'price', label: 'Price Range', type: 'range' }, { key: 'rating', label: 'Rating', type: 'rating' }] },
-    { id: 'cat_002', name: 'Laptops', slug: 'laptops', parentId: 'cat_001', level: 1, image: 'https://api.unsplash.com/photos/random?query=laptop&client_id=' + KEY, icon: 'Laptop', description: 'Gaming laptops, ultrabooks and business laptops.', productCount: 11, isActive: true, isFeatured: true, sortOrder: 1, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'ram', label: 'RAM', type: 'checkbox' }, { key: 'storage', label: 'Storage', type: 'checkbox' }, { key: 'processor', label: 'Processor', type: 'checkbox' }, { key: 'gpu', label: 'GPU', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_003', name: 'Gaming Laptops', slug: 'gaming-laptops', parentId: 'cat_002', level: 2, image: 'https://api.unsplash.com/photos/random?query=gaming-laptop&client_id=' + KEY, icon: 'Gamepad2', description: 'High performance gaming laptops with latest GPUs.', productCount: 6, isActive: true, isFeatured: false, sortOrder: 1, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'gpu', label: 'GPU', type: 'checkbox' }, { key: 'ram', label: 'RAM', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_004', name: 'Ultrabooks', slug: 'ultrabooks', parentId: 'cat_002', level: 2, image: 'https://api.unsplash.com/photos/random?query=ultrabook&client_id=' + KEY, icon: 'Laptop', description: 'Ultra-thin, lightweight laptops for professionals.', productCount: 5, isActive: true, isFeatured: false, sortOrder: 2, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'ram', label: 'RAM', type: 'checkbox' }, { key: 'batteryLife', label: 'Battery Life', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_005', name: 'Smartphones', slug: 'smartphones', parentId: 'cat_001', level: 1, image: 'https://api.unsplash.com/photos/random?query=smartphone&client_id=' + KEY, icon: 'Smartphone', description: 'Android phones, iPhones and flagship devices.', productCount: 12, isActive: true, isFeatured: true, sortOrder: 2, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'ram', label: 'RAM', type: 'checkbox' }, { key: 'storage', label: 'Storage', type: 'checkbox' }, { key: 'camera', label: 'Camera', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_006', name: 'Android', slug: 'android', parentId: 'cat_005', level: 2, image: 'https://api.unsplash.com/photos/random?query=android-phone&client_id=' + KEY, icon: 'Smartphone', description: 'Latest Android flagship and mid-range phones.', productCount: 8, isActive: true, isFeatured: false, sortOrder: 1, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'ram', label: 'RAM', type: 'checkbox' }, { key: 'storage', label: 'Storage', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_007', name: 'iPhone', slug: 'iphone', parentId: 'cat_005', level: 2, image: 'https://api.unsplash.com/photos/random?query=iphone&client_id=' + KEY, icon: 'Smartphone', description: 'Apple iPhone 16 series and previous models.', productCount: 4, isActive: true, isFeatured: true, sortOrder: 2, filters: [{ key: 'storage', label: 'Storage', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_008', name: 'Audio', slug: 'audio', parentId: 'cat_001', level: 1, image: 'https://api.unsplash.com/photos/random?query=audio-headphones&client_id=' + KEY, icon: 'Headphones', description: 'Headphones, earbuds and speakers.', productCount: 10, isActive: true, isFeatured: true, sortOrder: 3, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'connectivity', label: 'Connectivity', type: 'checkbox' }, { key: 'noiseCancellation', label: 'ANC', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_009', name: 'Fashion', slug: 'fashion', parentId: null, level: 0, image: 'https://api.unsplash.com/photos/random?query=mens-fashion&client_id=' + KEY, icon: 'Shirt', description: 'Trendy clothing, shoes and accessories for men.', productCount: 37, isActive: true, isFeatured: true, sortOrder: 2, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }, { key: 'rating', label: 'Rating', type: 'rating' }] },
-    { id: 'cat_010', name: 'Mens Clothing', slug: 'mens-clothing', parentId: 'cat_009', level: 1, image: 'https://api.unsplash.com/photos/random?query=mens-clothing&client_id=' + KEY, icon: 'Shirt', description: 'Shirts, pants, jackets and more for men.', productCount: 15, isActive: true, isFeatured: false, sortOrder: 1, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'sizes', label: 'Size', type: 'checkbox' }, { key: 'color', label: 'Color', type: 'checkbox' }, { key: 'fabric', label: 'Fabric', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_011', name: 'Shoes', slug: 'shoes', parentId: 'cat_009', level: 1, image: 'https://api.unsplash.com/photos/random?query=mens-shoes&client_id=' + KEY, icon: 'Footprints', description: 'Formal, casual and sports shoes for men.', productCount: 12, isActive: true, isFeatured: true, sortOrder: 2, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'sizes', label: 'Size', type: 'checkbox' }, { key: 'color', label: 'Color', type: 'checkbox' }, { key: 'material', label: 'Material', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_012', name: 'Home & Kitchen', slug: 'home-kitchen', parentId: null, level: 0, image: 'https://api.unsplash.com/photos/random?query=kitchen&client_id=' + KEY, icon: 'UtensilsCrossed', description: 'Kitchen appliances and home essentials.', productCount: 10, isActive: true, isFeatured: true, sortOrder: 3, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }, { key: 'rating', label: 'Rating', type: 'rating' }] },
-    { id: 'cat_013', name: 'Beauty', slug: 'beauty', parentId: null, level: 0, image: 'https://api.unsplash.com/photos/random?query=beauty-cosmetics&client_id=' + KEY, icon: 'Sparkles', description: 'Skincare, makeup and beauty products.', productCount: 10, isActive: true, isFeatured: true, sortOrder: 4, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'skinType', label: 'Skin Type', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_014', name: 'Sports & Fitness', slug: 'sports-fitness', parentId: null, level: 0, image: 'https://api.unsplash.com/photos/random?query=fitness-gym&client_id=' + KEY, icon: 'Dumbbell', description: 'Gym equipment, sports gear and fitness accessories.', productCount: 10, isActive: true, isFeatured: true, sortOrder: 5, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'targetMuscle', label: 'Target Muscle', type: 'checkbox' }, { key: 'difficulty', label: 'Difficulty', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_015', name: 'Books', slug: 'books', parentId: null, level: 0, image: 'https://api.unsplash.com/photos/random?query=books&client_id=' + KEY, icon: 'BookOpen', description: 'Tech books, self-help, fiction and more.', productCount: 8, isActive: true, isFeatured: false, sortOrder: 6, filters: [{ key: 'author', label: 'Author', type: 'checkbox' }, { key: 'format', label: 'Format', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
-    { id: 'cat_016', name: 'Accessories', slug: 'accessories', parentId: null, level: 0, image: 'https://api.unsplash.com/photos/random?query=fashion-accessories&client_id=' + KEY, icon: 'Watch', description: 'Bags, watches and fashion accessories.', productCount: 8, isActive: true, isFeatured: true, sortOrder: 7, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'material', label: 'Material', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_001', name: 'Electronics', slug: 'electronics', parentId: null, level: 0, image: UNSPLASH_CAT_IMG, icon: 'Zap', description: 'Latest gadgets, laptops, phones and audio devices.', productCount: 33, isActive: true, isFeatured: true, sortOrder: 1, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'price', label: 'Price Range', type: 'range' }, { key: 'rating', label: 'Rating', type: 'rating' }] },
+    { id: 'cat_002', name: 'Laptops', slug: 'laptops', parentId: 'cat_001', level: 1, image: UNSPLASH_CAT_IMG, icon: 'Laptop', description: 'Gaming laptops, ultrabooks and business laptops.', productCount: 11, isActive: true, isFeatured: true, sortOrder: 1, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'ram', label: 'RAM', type: 'checkbox' }, { key: 'storage', label: 'Storage', type: 'checkbox' }, { key: 'processor', label: 'Processor', type: 'checkbox' }, { key: 'gpu', label: 'GPU', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_003', name: 'Gaming Laptops', slug: 'gaming-laptops', parentId: 'cat_002', level: 2, image: UNSPLASH_CAT_IMG, icon: 'Gamepad2', description: 'High performance gaming laptops with latest GPUs.', productCount: 6, isActive: true, isFeatured: false, sortOrder: 1, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'gpu', label: 'GPU', type: 'checkbox' }, { key: 'ram', label: 'RAM', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_004', name: 'Ultrabooks', slug: 'ultrabooks', parentId: 'cat_002', level: 2, image: UNSPLASH_CAT_IMG, icon: 'Laptop', description: 'Ultra-thin, lightweight laptops for professionals.', productCount: 5, isActive: true, isFeatured: false, sortOrder: 2, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'ram', label: 'RAM', type: 'checkbox' }, { key: 'batteryLife', label: 'Battery Life', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_005', name: 'Smartphones', slug: 'smartphones', parentId: 'cat_001', level: 1, image: UNSPLASH_CAT_IMG, icon: 'Smartphone', description: 'Android phones, iPhones and flagship devices.', productCount: 12, isActive: true, isFeatured: true, sortOrder: 2, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'ram', label: 'RAM', type: 'checkbox' }, { key: 'storage', label: 'Storage', type: 'checkbox' }, { key: 'camera', label: 'Camera', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_006', name: 'Android', slug: 'android', parentId: 'cat_005', level: 2, image: UNSPLASH_CAT_IMG, icon: 'Smartphone', description: 'Latest Android flagship and mid-range phones.', productCount: 8, isActive: true, isFeatured: false, sortOrder: 1, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'ram', label: 'RAM', type: 'checkbox' }, { key: 'storage', label: 'Storage', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_007', name: 'iPhone', slug: 'iphone', parentId: 'cat_005', level: 2, image: UNSPLASH_CAT_IMG, icon: 'Smartphone', description: 'Apple iPhone 16 series and previous models.', productCount: 4, isActive: true, isFeatured: true, sortOrder: 2, filters: [{ key: 'storage', label: 'Storage', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_008', name: 'Audio', slug: 'audio', parentId: 'cat_001', level: 1, image: UNSPLASH_CAT_IMG, icon: 'Headphones', description: 'Headphones, earbuds and speakers.', productCount: 10, isActive: true, isFeatured: true, sortOrder: 3, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'connectivity', label: 'Connectivity', type: 'checkbox' }, { key: 'noiseCancellation', label: 'ANC', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_009', name: 'Fashion', slug: 'fashion', parentId: null, level: 0, image: UNSPLASH_CAT_IMG, icon: 'Shirt', description: 'Trendy clothing, shoes and accessories for men.', productCount: 37, isActive: true, isFeatured: true, sortOrder: 2, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }, { key: 'rating', label: 'Rating', type: 'rating' }] },
+    { id: 'cat_010', name: 'Mens Clothing', slug: 'mens-clothing', parentId: 'cat_009', level: 1, image: UNSPLASH_CAT_IMG, icon: 'Shirt', description: 'Shirts, pants, jackets and more for men.', productCount: 15, isActive: true, isFeatured: false, sortOrder: 1, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'sizes', label: 'Size', type: 'checkbox' }, { key: 'color', label: 'Color', type: 'checkbox' }, { key: 'fabric', label: 'Fabric', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_011', name: 'Shoes', slug: 'shoes', parentId: 'cat_009', level: 1, image: UNSPLASH_CAT_IMG, icon: 'Footprints', description: 'Formal, casual and sports shoes for men.', productCount: 12, isActive: true, isFeatured: true, sortOrder: 2, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'sizes', label: 'Size', type: 'checkbox' }, { key: 'color', label: 'Color', type: 'checkbox' }, { key: 'material', label: 'Material', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_012', name: 'Home & Kitchen', slug: 'home-kitchen', parentId: null, level: 0, image: UNSPLASH_CAT_IMG, icon: 'UtensilsCrossed', description: 'Kitchen appliances and home essentials.', productCount: 10, isActive: true, isFeatured: true, sortOrder: 3, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }, { key: 'rating', label: 'Rating', type: 'rating' }] },
+    { id: 'cat_013', name: 'Beauty', slug: 'beauty', parentId: null, level: 0, image: UNSPLASH_CAT_IMG, icon: 'Sparkles', description: 'Skincare, makeup and beauty products.', productCount: 10, isActive: true, isFeatured: true, sortOrder: 4, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'skinType', label: 'Skin Type', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_014', name: 'Sports & Fitness', slug: 'sports-fitness', parentId: null, level: 0, image: UNSPLASH_CAT_IMG, icon: 'Dumbbell', description: 'Gym equipment, sports gear and fitness accessories.', productCount: 10, isActive: true, isFeatured: true, sortOrder: 5, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'targetMuscle', label: 'Target Muscle', type: 'checkbox' }, { key: 'difficulty', label: 'Difficulty', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_015', name: 'Books', slug: 'books', parentId: null, level: 0, image: UNSPLASH_CAT_IMG, icon: 'BookOpen', description: 'Tech books, self-help, fiction and more.', productCount: 8, isActive: true, isFeatured: false, sortOrder: 6, filters: [{ key: 'author', label: 'Author', type: 'checkbox' }, { key: 'format', label: 'Format', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
+    { id: 'cat_016', name: 'Accessories', slug: 'accessories', parentId: null, level: 0, image: UNSPLASH_CAT_IMG, icon: 'Watch', description: 'Bags, watches and fashion accessories.', productCount: 8, isActive: true, isFeatured: true, sortOrder: 7, filters: [{ key: 'brand', label: 'Brand', type: 'checkbox' }, { key: 'material', label: 'Material', type: 'checkbox' }, { key: 'price', label: 'Price', type: 'range' }] },
   ]
 }
 
@@ -1124,7 +1157,7 @@ function makeUsers() {
     passwordHash: '$2b$10$exampleHashedPasswordForDemoOnly123456789',
     firstName:    firstNames[i],
     lastName:     lastNames[i],
-    avatar:       `https://api.unsplash.com/photos/random?query=portrait-person-${i + 1}&client_id=${KEY}`,
+    avatar:       UNSPLASH_CAT_IMG,
     phone:        `+1-555-${String(faker.number.int({ min: 1000, max: 9999 })).padStart(4, '0')}`,
     role:         i === 0 ? 'admin' : 'customer',
     addresses: [{
@@ -1163,12 +1196,12 @@ function makeCoupons() {
 // ─── BANNERS ──────────────────────────────────────────────────────────────────
 function makeBanners() {
   return [
-    { id: 'ban_001', title: 'Summer Tech Sale — Up to 40% Off', subtitle: 'Shop the best deals on laptops, phones and audio', image: `https://api.unsplash.com/photos/random?query=technology-sale&client_id=${KEY}`, ctaText: 'Shop Now', ctaLink: '/products?onSale=true&category=electronics', position: 'hero', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 1 },
-    { id: 'ban_002', title: 'New iPhone 16 Series — Available Now', subtitle: 'Experience the future of smartphones', image: `https://api.unsplash.com/photos/random?query=iphone-16&client_id=${KEY}`, ctaText: 'Explore', ctaLink: '/products?subcategory=iphone', position: 'hero', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 2 },
-    { id: 'ban_003', title: 'Fashion Week Sale — 25% Off All Clothing', subtitle: 'Refresh your wardrobe with premium brands', image: `https://api.unsplash.com/photos/random?query=fashion-sale&client_id=${KEY}`, ctaText: 'Shop Fashion', ctaLink: '/products?category=fashion&onSale=true', position: 'hero', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 3 },
-    { id: 'ban_004', title: 'Free Shipping on Orders Over $50', subtitle: 'Use code FREESHIP at checkout', image: `https://api.unsplash.com/photos/random?query=shipping-delivery&client_id=${KEY}`, ctaText: 'Shop All', ctaLink: '/products', position: 'sidebar', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 1 },
-    { id: 'ban_005', title: 'Gaming Setup Week — Massive Discounts', subtitle: 'Build your dream gaming station', image: `https://api.unsplash.com/photos/random?query=gaming-setup&client_id=${KEY}`, ctaText: 'View Deals', ctaLink: '/products?subSubcategory=gaming-laptops&onSale=true', position: 'category_top', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 1 },
-    { id: 'ban_006', title: 'Beauty & Skincare — New Arrivals', subtitle: 'Discover the latest in skincare and makeup', image: `https://api.unsplash.com/photos/random?query=beauty-skincare&client_id=${KEY}`, ctaText: 'Discover', ctaLink: '/products?category=beauty&newArrival=true', position: 'category_top', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 2 },
+    { id: 'ban_001', title: 'Summer Tech Sale — Up to 40% Off', subtitle: 'Shop the best deals on laptops, phones and audio', image: UNSPLASH_CAT_IMG, ctaText: 'Shop Now', ctaLink: '/products?onSale=true&category=electronics', position: 'hero', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 1 },
+    { id: 'ban_002', title: 'New iPhone 16 Series — Available Now', subtitle: 'Experience the future of smartphones', image: UNSPLASH_CAT_IMG, ctaText: 'Explore', ctaLink: '/products?subcategory=iphone', position: 'hero', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 2 },
+    { id: 'ban_003', title: 'Fashion Week Sale — 25% Off All Clothing', subtitle: 'Refresh your wardrobe with premium brands', image: UNSPLASH_CAT_IMG, ctaText: 'Shop Fashion', ctaLink: '/products?category=fashion&onSale=true', position: 'hero', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 3 },
+    { id: 'ban_004', title: 'Free Shipping on Orders Over $50', subtitle: 'Use code FREESHIP at checkout', image: UNSPLASH_CAT_IMG, ctaText: 'Shop All', ctaLink: '/products', position: 'sidebar', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 1 },
+    { id: 'ban_005', title: 'Gaming Setup Week — Massive Discounts', subtitle: 'Build your dream gaming station', image: UNSPLASH_CAT_IMG, ctaText: 'View Deals', ctaLink: '/products?subSubcategory=gaming-laptops&onSale=true', position: 'category_top', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 1 },
+    { id: 'ban_006', title: 'Beauty & Skincare — New Arrivals', subtitle: 'Discover the latest in skincare and makeup', image: UNSPLASH_CAT_IMG, ctaText: 'Discover', ctaLink: '/products?category=beauty&newArrival=true', position: 'category_top', startDate: '2025-01-01T00:00:00Z', endDate: '2025-12-31T23:59:59Z', isActive: true, sortOrder: 2 },
   ]
 }
 

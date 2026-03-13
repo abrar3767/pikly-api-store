@@ -2,9 +2,9 @@ import { Controller, Post, Get, Delete, Body, Param, UseGuards, Request } from '
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger'
 import { IsString, IsArray, IsUrl, IsIn, ArrayMinSize, ArrayMaxSize } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
-import { AuthGuard }      from '@nestjs/passport'
-import { RolesGuard }     from '../common/guards/roles.guard'
-import { Roles }          from '../common/decorators/roles.decorator'
+import { AuthGuard } from '@nestjs/passport'
+import { RolesGuard } from '../common/guards/roles.guard'
+import { Roles } from '../common/decorators/roles.decorator'
 import { WebhookService } from './webhook.service'
 import { successResponse } from '../common/api-utils'
 
@@ -49,9 +49,7 @@ export class WebhookController {
   @Post()
   @ApiOperation({ summary: '[Admin] Register a webhook endpoint (HTTPS only)' })
   async register(@Request() req: any, @Body() dto: RegisterWebhookDto) {
-    return successResponse(
-      await this.webhookService.register(req.user.userId, dto.url, dto.events),
-    )
+    return successResponse(await this.webhookService.register(req.user.userId, dto.url, dto.events))
   }
 
   @Get()

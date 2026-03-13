@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Body, Query, UseGuards, Request } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger'
-import { AuthGuard }     from '@nestjs/passport'
+import { AuthGuard } from '@nestjs/passport'
 import { WishlistService } from './wishlist.service'
-import { successResponse }  from '../common/api-utils'
+import { successResponse } from '../common/api-utils'
 
 // All wishlist routes require authentication. userId is derived from the JWT
 // token, not from a client-supplied query parameter, to prevent one user from
@@ -15,7 +15,7 @@ export class WishlistController {
   constructor(private readonly wishlistService: WishlistService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get the authenticated user\'s wishlist' })
+  @ApiOperation({ summary: "Get the authenticated user's wishlist" })
   async getWishlist(@Request() req: any) {
     const data = await this.wishlistService.getWishlist(req.user.userId)
     return successResponse(data)

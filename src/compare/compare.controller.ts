@@ -1,7 +1,7 @@
 import { Controller, Post, Body } from '@nestjs/common'
-import { ApiTags, ApiOperation }  from '@nestjs/swagger'
-import { CompareService }  from './compare.service'
-import { CompareDto }      from './dto/compare.dto'
+import { ApiTags, ApiOperation } from '@nestjs/swagger'
+import { CompareService } from './compare.service'
+import { CompareDto } from './dto/compare.dto'
 import { successResponse } from '../common/api-utils'
 
 @ApiTags('Compare')

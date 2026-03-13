@@ -4,7 +4,7 @@ dotenv.config()
 
 // ── Startup environment validation ────────────────────────────────────────────
 const REQUIRED_ENV = ['MONGODB_URI', 'JWT_SECRET', 'REDIS_URL']
-const missing      = REQUIRED_ENV.filter(k => !process.env[k])
+const missing = REQUIRED_ENV.filter((k) => !process.env[k])
 if (missing.length > 0) {
   console.error(`\n❌  Missing required environment variables: ${missing.join(', ')}`)
   console.error('    Copy .env.example to .env and fill in the values.\n')
@@ -14,17 +14,17 @@ if (missing.length > 0) {
 import { setDefaultResultOrder } from 'node:dns'
 setDefaultResultOrder('ipv4first')
 
-import { NestFactory }    from '@nestjs/core'
+import { NestFactory } from '@nestjs/core'
 import { ValidationPipe } from '@nestjs/common'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
-import { join }                 from 'path'
-import * as express             from 'express'
-import { AppModule }            from './app.module'
-import { AllExceptionsFilter }  from './common/all-exceptions.filter'
-import helmet      from 'helmet'
+import { join } from 'path'
+import * as express from 'express'
+import { AppModule } from './app.module'
+import { AllExceptionsFilter } from './common/all-exceptions.filter'
+import helmet from 'helmet'
 import compression from 'compression'
-import morgan      from 'morgan'
+import morgan from 'morgan'
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule)
@@ -51,11 +51,11 @@ async function bootstrap() {
 
   // ── CORS ────────────────────────────────────────────────────────────────────
   const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+    ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim())
     : '*'
   app.enableCors({
-    origin:         allowedOrigins,
-    methods:        'GET,POST,PATCH,DELETE,OPTIONS',
+    origin: allowedOrigins,
+    methods: 'GET,POST,PATCH,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type,Authorization,X-Session-ID,Idempotency-Key',
   })
 
@@ -66,9 +66,13 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter())
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, transform: true, forbidNonWhitelisted: true,
-  }))
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  )
 
   // ── Swagger ──────────────────────────────────────────────────────────────
   // QA-04: Swagger is now opt-in via SWAGGER_ENABLED=true rather than

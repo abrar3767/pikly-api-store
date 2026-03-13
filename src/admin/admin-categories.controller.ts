@@ -1,13 +1,23 @@
 import {
-  Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseGuards, HttpCode, HttpStatus, NotFoundException,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger'
-import { AuthGuard }       from '@nestjs/passport'
-import { RolesGuard }      from '../common/guards/roles.guard'
-import { Roles }           from '../common/decorators/roles.decorator'
+import { AuthGuard } from '@nestjs/passport'
+import { RolesGuard } from '../common/guards/roles.guard'
+import { Roles } from '../common/decorators/roles.decorator'
 import { CategoriesService } from '../categories/categories.service'
-import { successResponse }   from '../common/api-utils'
+import { successResponse } from '../common/api-utils'
 
 @ApiTags('Admin — Categories')
 @ApiBearerAuth()
@@ -44,8 +54,14 @@ export class AdminCategoriesController {
   @ApiParam({ name: 'id' })
   async toggle(@Param('id') id: string) {
     const current = this.categoriesService.categories.find((c: any) => c.id === id)
-    if (!current) throw new NotFoundException({ code: 'CATEGORY_NOT_FOUND', message: `Category "${id}" not found` })
-    return successResponse(await this.categoriesService.adminUpdate(id, { isActive: !current.isActive }))
+    if (!current)
+      throw new NotFoundException({
+        code: 'CATEGORY_NOT_FOUND',
+        message: `Category "${id}" not found`,
+      })
+    return successResponse(
+      await this.categoriesService.adminUpdate(id, { isActive: !current.isActive }),
+    )
   }
 
   @Delete(':id')

@@ -1,16 +1,16 @@
-import { Test, TestingModule }   from '@nestjs/testing'
-import { getModelToken }         from '@nestjs/mongoose'
+import { Test, TestingModule } from '@nestjs/testing'
+import { getModelToken } from '@nestjs/mongoose'
 import { BadRequestException, NotFoundException } from '@nestjs/common'
-import { OrdersService }   from '../orders.service'
-import { CartService }     from '../../cart/cart.service'
+import { OrdersService } from '../orders.service'
+import { CartService } from '../../cart/cart.service'
 import { ProductsService } from '../../products/products.service'
-import { MailService }     from '../../mail/mail.service'
-import { RedisService }    from '../../redis/redis.service'
-import { WebhookService }  from '../../webhooks/webhook.service'
-import { Order }           from '../../database/order.schema'
-import { User }            from '../../database/user.schema'
-import { Coupon }          from '../../database/coupon.schema'
-import { Counter }         from '../../database/counter.schema'
+import { MailService } from '../../mail/mail.service'
+import { RedisService } from '../../redis/redis.service'
+import { WebhookService } from '../../webhooks/webhook.service'
+import { Order } from '../../database/order.schema'
+import { User } from '../../database/user.schema'
+import { Coupon } from '../../database/coupon.schema'
+import { Counter } from '../../database/counter.schema'
 
 // Must be a valid 24-char hex string — Mongoose's ObjectId constructor throws
 // a BSONError for arbitrary strings like 'uid1', which gets caught by the
@@ -19,57 +19,67 @@ import { Counter }         from '../../database/counter.schema'
 const VALID_USER_ID = '507f1f77bcf86cd799439011'
 
 describe('OrdersService', () => {
-  let service:        OrdersService
-  let orderModel:     any
-  let userModel:      any
-  let couponModel:    any
-  let counterModel:   any
-  let cartService:    any
+  let service: OrdersService
+  let orderModel: any
+  let userModel: any
+  let couponModel: any
+  let counterModel: any
+  let cartService: any
   let productsService: any
-  let mailService:    any
-  let redis:          any
+  let mailService: any
+  let redis: any
   let webhookService: any
 
+  let testingModule: TestingModule
+
   beforeEach(async () => {
-    orderModel      = { create: jest.fn(), findOne: jest.fn(), deleteOne: jest.fn() }
-    userModel       = { findById: jest.fn() }
-    couponModel     = { findOne: jest.fn(), findOneAndUpdate: jest.fn() }
-    counterModel    = { findOneAndUpdate: jest.fn().mockResolvedValue({ seq: 1 }) }
-    cartService     = { getCart: jest.fn(), clearCart: jest.fn().mockResolvedValue(undefined) }
+    orderModel = { create: jest.fn(), findOne: jest.fn(), deleteOne: jest.fn() }
+    userModel = { findById: jest.fn() }
+    couponModel = { findOne: jest.fn(), findOneAndUpdate: jest.fn() }
+    counterModel = { findOneAndUpdate: jest.fn().mockResolvedValue({ seq: 1 }) }
+    cartService = { getCart: jest.fn(), clearCart: jest.fn().mockResolvedValue(undefined) }
     productsService = {
       decrementStock: jest.fn().mockResolvedValue(true),
       incrementStock: jest.fn().mockResolvedValue(undefined),
     }
-    mailService     = { sendOrderConfirmation: jest.fn().mockResolvedValue(undefined) }
-    redis           = {
+    mailService = { sendOrderConfirmation: jest.fn().mockResolvedValue(undefined) }
+    redis = {
       getIdempotencyKey: jest.fn().mockResolvedValue(null),
       setIdempotencyKey: jest.fn().mockResolvedValue(undefined),
     }
-    webhookService  = { dispatch: jest.fn().mockResolvedValue(undefined) }
+    webhookService = { dispatch: jest.fn().mockResolvedValue(undefined) }
 
-    const module: TestingModule = await Test.createTestingModule({
+    testingModule = await Test.createTestingModule({
       providers: [
         OrdersService,
-        { provide: getModelToken(Order.name),   useValue: orderModel      },
-        { provide: getModelToken(User.name),    useValue: userModel       },
-        { provide: getModelToken(Coupon.name),  useValue: couponModel     },
-        { provide: getModelToken(Counter.name), useValue: counterModel    },
-        { provide: CartService,     useValue: cartService     },
+        { provide: getModelToken(Order.name), useValue: orderModel },
+        { provide: getModelToken(User.name), useValue: userModel },
+        { provide: getModelToken(Coupon.name), useValue: couponModel },
+        { provide: getModelToken(Counter.name), useValue: counterModel },
+        { provide: CartService, useValue: cartService },
         { provide: ProductsService, useValue: productsService },
-        { provide: MailService,     useValue: mailService     },
-        { provide: RedisService,    useValue: redis           },
-        { provide: WebhookService,  useValue: webhookService  },
+        { provide: MailService, useValue: mailService },
+        { provide: RedisService, useValue: redis },
+        { provide: WebhookService, useValue: webhookService },
       ],
     }).compile()
 
-    service = module.get<OrdersService>(OrdersService)
+    service = testingModule.get<OrdersService>(OrdersService)
+  })
+
+  afterAll(async () => {
+    await testingModule?.close()
   })
 
   describe('createOrder', () => {
     it('throws EMPTY_CART when cart is empty', async () => {
       cartService.getCart.mockResolvedValue({ isEmpty: true, items: [], pricing: {} })
       await expect(
-        service.createOrder(VALID_USER_ID, { sessionId: 's1', addressId: 'a1', paymentMethod: 'card' }),
+        service.createOrder(VALID_USER_ID, {
+          sessionId: 's1',
+          addressId: 'a1',
+          paymentMethod: 'card',
+        }),
       ).rejects.toThrow(BadRequestException)
     })
 
@@ -81,7 +91,11 @@ describe('OrdersService', () => {
       })
       userModel.findById.mockResolvedValue(null)
       await expect(
-        service.createOrder(VALID_USER_ID, { sessionId: 's1', addressId: 'a1', paymentMethod: 'card' }),
+        service.createOrder(VALID_USER_ID, {
+          sessionId: 's1',
+          addressId: 'a1',
+          paymentMethod: 'card',
+        }),
       ).rejects.toThrow(NotFoundException)
     })
 
@@ -95,15 +109,24 @@ describe('OrdersService', () => {
       cartService.getCart.mockResolvedValue(cart)
       userModel.findById.mockResolvedValue({
         _id: { toString: () => VALID_USER_ID },
-        email: 'u@t.com', firstName: 'U',
+        email: 'u@t.com',
+        firstName: 'U',
         addresses: [{ id: 'a1', street: '1 Main', city: 'NY', country: 'USA' }],
       })
       orderModel.create.mockResolvedValue({ orderId: 'ORD-2025-00001', toObject: () => ({}) })
 
-      await service.createOrder(VALID_USER_ID, { sessionId: 's1', addressId: 'a1', paymentMethod: 'cod' })
+      await service.createOrder(VALID_USER_ID, {
+        sessionId: 's1',
+        addressId: 'a1',
+        paymentMethod: 'cod',
+      })
 
       expect(orderModel.create).toHaveBeenCalledWith(
-        expect.objectContaining({ paymentMethod: 'cod', paymentStatus: 'pending', status: 'pending' }),
+        expect.objectContaining({
+          paymentMethod: 'cod',
+          paymentStatus: 'pending',
+          status: 'pending',
+        }),
       )
     })
 
@@ -117,15 +140,24 @@ describe('OrdersService', () => {
       cartService.getCart.mockResolvedValue(cart)
       userModel.findById.mockResolvedValue({
         _id: { toString: () => VALID_USER_ID },
-        email: 'u@t.com', firstName: 'U',
+        email: 'u@t.com',
+        firstName: 'U',
         addresses: [{ id: 'a1', street: '1 Main', city: 'NY', country: 'USA' }],
       })
       orderModel.create.mockResolvedValue({ orderId: 'ORD-2025-00001', toObject: () => ({}) })
 
-      await service.createOrder(VALID_USER_ID, { sessionId: 's1', addressId: 'a1', paymentMethod: 'card' })
+      await service.createOrder(VALID_USER_ID, {
+        sessionId: 's1',
+        addressId: 'a1',
+        paymentMethod: 'card',
+      })
 
       expect(orderModel.create).toHaveBeenCalledWith(
-        expect.objectContaining({ paymentMethod: 'card', paymentStatus: 'paid', status: 'confirmed' }),
+        expect.objectContaining({
+          paymentMethod: 'card',
+          paymentStatus: 'paid',
+          status: 'confirmed',
+        }),
       )
     })
 
@@ -139,13 +171,18 @@ describe('OrdersService', () => {
       cartService.getCart.mockResolvedValue(cart)
       userModel.findById.mockResolvedValue({
         _id: { toString: () => VALID_USER_ID },
-        email: 'u@t.com', firstName: 'U',
+        email: 'u@t.com',
+        firstName: 'U',
         addresses: [{ id: 'a1', street: '1 Main', city: 'NY', country: 'USA' }],
       })
       orderModel.create.mockRejectedValue(new Error('DB error'))
 
       await expect(
-        service.createOrder(VALID_USER_ID, { sessionId: 's1', addressId: 'a1', paymentMethod: 'card' }),
+        service.createOrder(VALID_USER_ID, {
+          sessionId: 's1',
+          addressId: 'a1',
+          paymentMethod: 'card',
+        }),
       ).rejects.toBeDefined()
 
       expect(productsService.incrementStock).toHaveBeenCalledWith('p1', 2)

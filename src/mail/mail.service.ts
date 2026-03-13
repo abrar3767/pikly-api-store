@@ -32,7 +32,9 @@ export class MailService {
   private async send(to: string, subject: string, html: string): Promise<void> {
     if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
       // In development without email configured, log instead of crashing.
-      this.logger.warn(`[DEV] Email not sent (MAIL_USER/MAIL_PASS not set). Subject: "${subject}" → ${to}`)
+      this.logger.warn(
+        `[DEV] Email not sent (MAIL_USER/MAIL_PASS not set). Subject: "${subject}" → ${to}`,
+      )
       return
     }
     try {
@@ -54,7 +56,10 @@ export class MailService {
 
   async sendVerificationEmail(to: string, firstName: string, token: string): Promise<void> {
     const url = `${process.env.APP_URL ?? 'http://localhost:3000'}/api/v1/auth/verify-email?token=${token}`
-    await this.send(to, 'Verify your Pikly Store account', `
+    await this.send(
+      to,
+      'Verify your Pikly Store account',
+      `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
         <h2 style="color:#2563eb">Welcome to Pikly Store, ${firstName}!</h2>
         <p>Please verify your email address to activate your account.</p>
@@ -64,14 +69,18 @@ export class MailService {
         <p style="color:#6b7280;font-size:14px">This link expires in 24 hours. If you did not create an account, ignore this email.</p>
         <p style="color:#9ca3af;font-size:12px">Or copy this URL: ${url}</p>
       </div>
-    `)
+    `,
+    )
   }
 
   // ── Password reset (SEC-03) ──────────────────────────────────────────────
 
   async sendPasswordResetEmail(to: string, firstName: string, token: string): Promise<void> {
     const url = `${process.env.APP_URL ?? 'http://localhost:3000'}/api/v1/auth/reset-password?token=${token}`
-    await this.send(to, 'Reset your Pikly Store password', `
+    await this.send(
+      to,
+      'Reset your Pikly Store password',
+      `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
         <h2 style="color:#2563eb">Password Reset Request</h2>
         <p>Hi ${firstName}, we received a request to reset your password.</p>
@@ -81,21 +90,28 @@ export class MailService {
         <p style="color:#6b7280;font-size:14px">This link expires in 15 minutes. If you did not request a reset, ignore this email — your account is safe.</p>
         <p style="color:#9ca3af;font-size:12px">Or copy this URL: ${url}</p>
       </div>
-    `)
+    `,
+    )
   }
 
   // ── Order confirmation (FEAT-06) ─────────────────────────────────────────
 
   async sendOrderConfirmation(to: string, firstName: string, order: any): Promise<void> {
-    const itemRows = (order.items ?? []).map((item: any) =>
-      `<tr>
+    const itemRows = (order.items ?? [])
+      .map(
+        (item: any) =>
+          `<tr>
         <td style="padding:8px;border-bottom:1px solid #e5e7eb">${item.title}</td>
         <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center">${item.quantity}</td>
         <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right">$${item.subtotal?.toFixed(2)}</td>
-      </tr>`
-    ).join('')
+      </tr>`,
+      )
+      .join('')
 
-    await this.send(to, `Order Confirmed — ${order.orderId}`, `
+    await this.send(
+      to,
+      `Order Confirmed — ${order.orderId}`,
+      `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
         <h2 style="color:#2563eb">Order Confirmed!</h2>
         <p>Hi ${firstName}, thank you for your order.</p>
@@ -114,13 +130,17 @@ export class MailService {
         <p><strong>Payment:</strong> ${order.paymentMethod?.toUpperCase()}</p>
         <p style="color:#6b7280;font-size:14px">Estimated delivery: ${order.estimatedDelivery ? new Date(order.estimatedDelivery).toDateString() : 'TBD'}</p>
       </div>
-    `)
+    `,
+    )
   }
 
   // ── Order shipped (FEAT-06) ──────────────────────────────────────────────
 
   async sendShippingNotification(to: string, firstName: string, order: any): Promise<void> {
-    await this.send(to, `Your order ${order.orderId} has shipped!`, `
+    await this.send(
+      to,
+      `Your order ${order.orderId} has shipped!`,
+      `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
         <h2 style="color:#059669">Your Order Has Shipped!</h2>
         <p>Hi ${firstName}, great news — your order is on its way.</p>
@@ -128,6 +148,7 @@ export class MailService {
         <p><strong>Tracking Number:</strong> ${order.trackingNumber ?? 'Not available yet'}</p>
         <p><strong>Estimated Delivery:</strong> ${order.estimatedDelivery ? new Date(order.estimatedDelivery).toDateString() : 'TBD'}</p>
       </div>
-    `)
+    `,
+    )
   }
 }

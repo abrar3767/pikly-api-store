@@ -1,19 +1,30 @@
 import {
-  Controller, Get, Post, Patch, Delete,
-  Param, Body, UseGuards, Request, ParseIntPipe,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Request,
+  ParseIntPipe,
   Query,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger'
-import { AuthGuard }    from '@nestjs/passport'
-import { IsInt, Min }   from 'class-validator'
-import { ApiProperty }  from '@nestjs/swagger'
-import { Type }         from 'class-transformer'
+import { AuthGuard } from '@nestjs/passport'
+import { IsInt, Min } from 'class-validator'
+import { ApiProperty } from '@nestjs/swagger'
+import { Type } from 'class-transformer'
 import { UsersService } from './users.service'
 import { successResponse } from '../common/api-utils'
 import { UpdateProfileDto, AddAddressDto, UpdateAddressDto } from './dto/users.dto'
 
 class RedeemPointsDto {
-  @ApiProperty({ description: 'Number of loyalty points to redeem (minimum 100 = $1.00)', example: 500 })
+  @ApiProperty({
+    description: 'Number of loyalty points to redeem (minimum 100 = $1.00)',
+    example: 500,
+  })
   @IsInt()
   @Min(100)
   @Type(() => Number)

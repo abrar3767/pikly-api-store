@@ -1,15 +1,15 @@
 import { Controller, Get, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
-import { AuthGuard }    from '@nestjs/passport'
-import { InjectModel }  from '@nestjs/mongoose'
-import { Model }        from 'mongoose'
-import { RolesGuard }   from '../common/guards/roles.guard'
-import { Roles }        from '../common/decorators/roles.decorator'
-import { successResponse }    from '../common/api-utils'
-import { ProductsService }    from '../products/products.service'
-import { CategoriesService }  from '../categories/categories.service'
-import { User,   UserDocument   } from '../database/user.schema'
-import { Order,  OrderDocument  } from '../database/order.schema'
+import { AuthGuard } from '@nestjs/passport'
+import { InjectModel } from '@nestjs/mongoose'
+import { Model } from 'mongoose'
+import { RolesGuard } from '../common/guards/roles.guard'
+import { Roles } from '../common/decorators/roles.decorator'
+import { successResponse } from '../common/api-utils'
+import { ProductsService } from '../products/products.service'
+import { CategoriesService } from '../categories/categories.service'
+import { User, UserDocument } from '../database/user.schema'
+import { Order, OrderDocument } from '../database/order.schema'
 import { Coupon, CouponDocument } from '../database/coupon.schema'
 import { Banner, BannerDocument } from '../database/banner.schema'
 
@@ -20,10 +20,10 @@ export class HealthController {
   private countCache: { data: any; expiresAt: number } | null = null
 
   constructor(
-    private readonly productsService:   ProductsService,
+    private readonly productsService: ProductsService,
     private readonly categoriesService: CategoriesService,
-    @InjectModel(User.name)   private userModel:   Model<UserDocument>,
-    @InjectModel(Order.name)  private orderModel:  Model<OrderDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     @InjectModel(Coupon.name) private couponModel: Model<CouponDocument>,
     @InjectModel(Banner.name) private bannerModel: Model<BannerDocument>,
   ) {}
@@ -56,24 +56,24 @@ export class HealthController {
         this.bannerModel.countDocuments(),
       ])
       this.countCache = {
-        data:      { users, orders, coupons, banners },
+        data: { users, orders, coupons, banners },
         expiresAt: now + 30_000,
       }
     }
 
     return successResponse({
-      status:      'ok',
-      uptime:      process.uptime().toFixed(2) + 's',
-      timestamp:   new Date().toISOString(),
-      version:     '1.0.0',
+      status: 'ok',
+      uptime: process.uptime().toFixed(2) + 's',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
       environment: process.env.NODE_ENV ?? 'development',
       dataLoaded: {
-        products:   this.productsService.products.length,
+        products: this.productsService.products.length,
         categories: this.categoriesService.categories.length,
         ...this.countCache.data,
       },
       memory: {
-        heapUsed:  (process.memoryUsage().heapUsed  / 1024 / 1024).toFixed(2) + ' MB',
+        heapUsed: (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2) + ' MB',
         heapTotal: (process.memoryUsage().heapTotal / 1024 / 1024).toFixed(2) + ' MB',
       },
     })

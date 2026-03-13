@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger'
-import { CouponsService }  from './coupons.service'
+import { CouponsService } from './coupons.service'
 import { successResponse } from '../common/api-utils'
 
 @ApiTags('Coupons')

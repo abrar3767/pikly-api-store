@@ -1,9 +1,9 @@
 import { Module, forwardRef } from '@nestjs/common'
-import { MongooseModule }     from '@nestjs/mongoose'
+import { MongooseModule } from '@nestjs/mongoose'
 import { CategoriesController } from './categories.controller'
-import { CategoriesService }    from './categories.service'
+import { CategoriesService } from './categories.service'
 import { Category, CategorySchema } from '../database/category.schema'
-import { ProductsModule }           from '../products/products.module'
+import { ProductsModule } from '../products/products.module'
 
 @Module({
   imports: [
@@ -12,7 +12,7 @@ import { ProductsModule }           from '../products/products.module'
     forwardRef(() => ProductsModule),
   ],
   controllers: [CategoriesController],
-  providers:   [CategoriesService],
-  exports:     [CategoriesService],
+  providers: [CategoriesService],
+  exports: [CategoriesService],
 })
 export class CategoriesModule {}

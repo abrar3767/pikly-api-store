@@ -1,16 +1,29 @@
 import {
-  Controller, Post, Get, Body, Query,
-  UseGuards, Request, HttpCode, HttpStatus,
+  Controller,
+  Post,
+  Get,
+  Body,
+  Query,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
 import { AuthGuard } from '@nestjs/passport'
-import { Throttle }  from '@nestjs/throttler'
+import { Throttle } from '@nestjs/throttler'
 import { AuthService } from './auth.service'
 import { successResponse } from '../common/api-utils'
 import {
-  RegisterDto, LoginDto, RefreshTokenDto, LogoutDto,
-  ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto,
-  ChangePasswordDto, ResendVerificationDto,
+  RegisterDto,
+  LoginDto,
+  RefreshTokenDto,
+  LogoutDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyEmailDto,
+  ChangePasswordDto,
+  ResendVerificationDto,
 } from './dto/auth.dto'
 
 @ApiTags('Auth')

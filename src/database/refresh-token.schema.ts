@@ -9,10 +9,10 @@ export type RefreshTokenDocument = RefreshToken & Document
 // once before being invalidated, limiting the damage window.
 @Schema()
 export class RefreshToken {
-  @Prop({ required: true, index: true }) userId:    string
-  @Prop({ required: true, unique: true }) tokenHash: string  // bcrypt hash for storage safety
-  @Prop({ required: true })              expiresAt: Date
-  @Prop({ default: () => new Date() })   createdAt: Date
+  @Prop({ required: true, index: true }) userId: string
+  @Prop({ required: true, unique: true }) tokenHash: string // bcrypt hash for storage safety
+  @Prop({ required: true }) expiresAt: Date
+  @Prop({ default: () => new Date() }) createdAt: Date
 }
 
 export const RefreshTokenSchema = SchemaFactory.createForClass(RefreshToken)

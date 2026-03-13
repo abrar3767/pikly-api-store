@@ -1,9 +1,16 @@
 import {
-  Controller, Post, Get, Patch,
-  Body, Param, Query, UseGuards, Request,
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger'
-import { AuthGuard }     from '@nestjs/passport'
+import { AuthGuard } from '@nestjs/passport'
 import { OrdersService } from './orders.service'
 import { CreateOrderDto } from './dto/create-order.dto'
 import { successResponse } from '../common/api-utils'
@@ -25,8 +32,8 @@ export class OrdersController {
   // FEAT-02: pre-checkout shipping cost endpoint
   @Get('shipping-estimate')
   @ApiOperation({ summary: 'Calculate shipping cost before placing order' })
-  @ApiQuery({ name: 'sessionId',  required: true })
-  @ApiQuery({ name: 'addressId',  required: true })
+  @ApiQuery({ name: 'sessionId', required: true })
+  @ApiQuery({ name: 'addressId', required: true })
   async shippingEstimate(
     @Request() req: any,
     @Query('sessionId') sessionId: string,
@@ -37,14 +44,16 @@ export class OrdersController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all orders for the authenticated user (SVC-02: DB-level pagination)' })
-  @ApiQuery({ name: 'page',   required: false })
-  @ApiQuery({ name: 'limit',  required: false })
+  @ApiOperation({
+    summary: 'Get all orders for the authenticated user (SVC-02: DB-level pagination)',
+  })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'status', required: false })
   async getUserOrders(
     @Request() req: any,
-    @Query('page')   page?:   number,
-    @Query('limit')  limit?:  number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
     @Query('status') status?: string,
   ) {
     const data = await this.ordersService.getUserOrders(req.user.userId, { page, limit, status })

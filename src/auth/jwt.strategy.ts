@@ -10,9 +10,9 @@ import { RedisService } from '../redis/redis.service'
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly redis: RedisService) {
     super({
-      jwtFromRequest:   ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey:      process.env.JWT_SECRET as string,
+      secretOrKey: process.env.JWT_SECRET as string,
     })
   }
 
@@ -21,7 +21,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (payload.jti) {
       const revoked = await this.redis.isTokenBlacklisted(payload.jti)
-      if (revoked) throw new UnauthorizedException({ code: 'TOKEN_REVOKED', message: 'Token has been revoked. Please log in again.' })
+      if (revoked)
+        throw new UnauthorizedException({
+          code: 'TOKEN_REVOKED',
+          message: 'Token has been revoked. Please log in again.',
+        })
     }
 
     // Include jti and exp so the logout handler can blacklist the token.
@@ -29,10 +33,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // blacklist call in AuthService.logout() is silently skipped.
     return {
       userId: payload.sub,
-      email:  payload.email,
-      role:   payload.role,
-      jti:    payload.jti,   // unique token ID — used to blacklist on logout
-      exp:    payload.exp,   // Unix timestamp — used to set Redis TTL
+      email: payload.email,
+      role: payload.role,
+      jti: payload.jti, // unique token ID — used to blacklist on logout
+      exp: payload.exp, // Unix timestamp — used to set Redis TTL
     }
   }
 }

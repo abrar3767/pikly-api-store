@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common'
 import NodeCache from 'node-cache'
 
 export const TTL = {
-  HOMEPAGE:   300,
-  PRODUCTS:   60,
+  HOMEPAGE: 300,
+  PRODUCTS: 60,
   CATEGORIES: 600,
-  BANNERS:    600,
-  DEFAULT:    120,
+  BANNERS: 600,
+  DEFAULT: 120,
 }
 
 @Injectable()

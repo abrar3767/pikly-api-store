@@ -23,9 +23,7 @@ export class RedisService implements OnModuleDestroy {
       // Upstash enforces TLS on port 6380; standard Redis uses 6379.
       // ioredis detects "rediss://" scheme and enables TLS automatically.
     })
-    this.client.on('error', (err) =>
-      this.logger.error(`Redis connection error: ${err.message}`),
-    )
+    this.client.on('error', (err) => this.logger.error(`Redis connection error: ${err.message}`))
     this.client.on('connect', () => this.logger.log('Redis connected'))
   }
 
@@ -120,7 +118,11 @@ export class RedisService implements OnModuleDestroy {
 
   async onModuleDestroy() {
     for (const sub of this.subscribers) {
-      try { await sub.quit() } catch { /* ignore on teardown */ }
+      try {
+        await sub.quit()
+      } catch {
+        /* ignore on teardown */
+      }
     }
     await this.client.quit()
   }

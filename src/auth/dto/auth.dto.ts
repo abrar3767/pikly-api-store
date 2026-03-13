@@ -1,6 +1,11 @@
 import {
-  IsString, IsEmail, MinLength, MaxLength,
-  IsNotEmpty, IsOptional, Matches,
+  IsString,
+  IsEmail,
+  MinLength,
+  MaxLength,
+  IsNotEmpty,
+  IsOptional,
+  Matches,
 } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
 
@@ -26,7 +31,9 @@ export class RegisterDto {
   @IsNotEmpty()
   @MinLength(1)
   @MaxLength(100)
-  @Matches(/^[a-zA-Z\s'\-]+$/, { message: 'First name may only contain letters, spaces, hyphens, and apostrophes' })
+  @Matches(/^[a-zA-Z\s'\-]+$/, {
+    message: 'First name may only contain letters, spaces, hyphens, and apostrophes',
+  })
   firstName: string
 
   @ApiProperty({ example: 'Doe' })
@@ -34,7 +41,9 @@ export class RegisterDto {
   @IsNotEmpty()
   @MinLength(1)
   @MaxLength(100)
-  @Matches(/^[a-zA-Z\s'\-]+$/, { message: 'Last name may only contain letters, spaces, hyphens, and apostrophes' })
+  @Matches(/^[a-zA-Z\s'\-]+$/, {
+    message: 'Last name may only contain letters, spaces, hyphens, and apostrophes',
+  })
   lastName: string
 }
 

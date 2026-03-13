@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common'
-import { CacheService }   from './cache.service'
+import { CacheService } from './cache.service'
 
 // @Global makes CacheService available everywhere as a single shared instance.
 // No module needs to import CacheModule or declare CacheService in providers —
@@ -9,6 +9,6 @@ import { CacheService }   from './cache.service'
 @Global()
 @Module({
   providers: [CacheService],
-  exports:   [CacheService],
+  exports: [CacheService],
 })
 export class CacheModule {}

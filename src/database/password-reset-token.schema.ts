@@ -5,9 +5,9 @@ export type PasswordResetTokenDocument = PasswordResetToken & Document
 
 @Schema()
 export class PasswordResetToken {
-  @Prop({ required: true, index: true }) userId:    string
-  @Prop({ required: true, unique: true }) token:    string
-  @Prop({ required: true })              expiresAt: Date
+  @Prop({ required: true, index: true }) userId: string
+  @Prop({ required: true, unique: true }) token: string
+  @Prop({ required: true }) expiresAt: Date
   // BUG FIX: removed the `used: boolean` field. It was never set to true
   // anywhere in the codebase — after a successful reset, the token was deleted
   // via deleteOne(), not marked used. The field was dead code. The query in

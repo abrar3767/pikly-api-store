@@ -10,8 +10,8 @@ export class Cart {
   // SCH-02: reference to User ObjectId; nullable for guest carts
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null })
   userId: mongoose.Types.ObjectId | null
-  @Prop({ type: [Object], default: [] }) items:  any[]
-  @Prop({ type: Object, default: null })  coupon: any
+  @Prop({ type: [Object], default: [] }) items: any[]
+  @Prop({ type: Object, default: null }) coupon: any
 }
 
 export const CartSchema = SchemaFactory.createForClass(Cart)

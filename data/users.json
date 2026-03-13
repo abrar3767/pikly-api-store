@@ -5,7 +5,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "James",
     "lastName": "Smith",
-    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-1&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
     "phone": "+1-555-7780",
     "role": "admin",
     "addresses": [
@@ -33,7 +33,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Emma",
     "lastName": "Johnson",
-    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-2&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
     "phone": "+1-555-7719",
     "role": "customer",
     "addresses": [
@@ -61,7 +61,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Liam",
     "lastName": "Williams",
-    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-3&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
     "phone": "+1-555-6790",
     "role": "customer",
     "addresses": [
@@ -89,7 +89,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Olivia",
     "lastName": "Brown",
-    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-4&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
     "phone": "+1-555-4474",
     "role": "customer",
     "addresses": [
@@ -117,7 +117,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Noah",
     "lastName": "Jones",
-    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-5&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
     "phone": "+1-555-1507",
     "role": "customer",
     "addresses": [
@@ -145,7 +145,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Ava",
     "lastName": "Garcia",
-    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-6&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
     "phone": "+1-555-2885",
     "role": "customer",
     "addresses": [
@@ -173,7 +173,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "William",
     "lastName": "Miller",
-    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-7&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
     "phone": "+1-555-9873",
     "role": "customer",
     "addresses": [
@@ -201,7 +201,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Sophia",
     "lastName": "Davis",
-    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-8&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
     "phone": "+1-555-9786",
     "role": "customer",
     "addresses": [
@@ -229,7 +229,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Benjamin",
     "lastName": "Wilson",
-    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-9&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
     "phone": "+1-555-5358",
     "role": "customer",
     "addresses": [
@@ -257,7 +257,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Isabella",
     "lastName": "Moore",
-    "avatar": "https://api.unsplash.com/photos/random?query=portrait-person-10&client_id=5aTONFX9_ovVuQYTeXwqPKFxPe1EFXU-jlzCkdPAljE",
+    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
     "phone": "+1-555-7566",
     "role": "customer",
     "addresses": [

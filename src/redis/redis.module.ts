@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common'
-import { RedisService }   from './redis.service'
+import { RedisService } from './redis.service'
 
 // @Global() makes RedisService available everywhere without needing to import
 // RedisModule in every feature module — it is infrastructure shared by auth,
@@ -7,6 +7,6 @@ import { RedisService }   from './redis.service'
 @Global()
 @Module({
   providers: [RedisService],
-  exports:   [RedisService],
+  exports: [RedisService],
 })
 export class RedisModule {}
