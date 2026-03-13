@@ -5,7 +5,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "James",
     "lastName": "Smith",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&auto=format",
     "phone": "+1-555-7780",
     "role": "admin",
     "addresses": [
@@ -33,7 +33,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Emma",
     "lastName": "Johnson",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&auto=format",
     "phone": "+1-555-7719",
     "role": "customer",
     "addresses": [
@@ -61,7 +61,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Liam",
     "lastName": "Williams",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&auto=format",
     "phone": "+1-555-6790",
     "role": "customer",
     "addresses": [
@@ -89,7 +89,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Olivia",
     "lastName": "Brown",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&auto=format",
     "phone": "+1-555-4474",
     "role": "customer",
     "addresses": [
@@ -117,7 +117,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Noah",
     "lastName": "Jones",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&auto=format",
     "phone": "+1-555-1507",
     "role": "customer",
     "addresses": [
@@ -145,7 +145,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Ava",
     "lastName": "Garcia",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&auto=format",
     "phone": "+1-555-2885",
     "role": "customer",
     "addresses": [
@@ -173,7 +173,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "William",
     "lastName": "Miller",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=200&h=200&fit=crop&auto=format",
     "phone": "+1-555-9873",
     "role": "customer",
     "addresses": [
@@ -201,7 +201,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Sophia",
     "lastName": "Davis",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=200&fit=crop&auto=format",
     "phone": "+1-555-9786",
     "role": "customer",
     "addresses": [
@@ -229,7 +229,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Benjamin",
     "lastName": "Wilson",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop&auto=format",
     "phone": "+1-555-5358",
     "role": "customer",
     "addresses": [
@@ -257,7 +257,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Isabella",
     "lastName": "Moore",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&h=200&fit=crop&auto=format",
     "phone": "+1-555-7566",
     "role": "customer",
     "addresses": [
