@@ -23,7 +23,7 @@ async function seed() {
   const db = client.db(dbName);
   console.log(`Connected. Using database: ${dbName}`);
 
-  const collections = ["products", "categories", "coupons", "banners"];
+  const collections = ["products", "categories", "coupons", "banners", "users", "orders"];
 
   for (const name of collections) {
     const filePath = path.join(DATA_DIR, `${name}.json`);
