@@ -86,7 +86,7 @@ export class ProductsService implements OnModuleInit {
 
     const fullFiltered = filterProducts(active, { ...query, page: 1, limit: 99999 })
     const paginated = smartPaginate(fullFiltered.items, {
-      page: query.page,
+      page: query.page !== undefined && query.page !== null && !isNaN(Number(query.page)) ? Number(query.page) : undefined,
       limit: query.limit ?? 20,
       cursor: (query as any).cursor,
     })
