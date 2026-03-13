@@ -102,8 +102,18 @@ export function smartPaginate(
   params: { page?: number; limit?: number; cursor?: string },
 ) {
   const { page, limit = 20, cursor } = params
+
+  // Cursor explicitly provided — always cursor mode
   if (cursor !== undefined && cursor !== null && cursor !== '') {
     return cursorPaginate(array, cursor, limit)
   }
-  return paginate(array, page ?? 1, limit)
+
+  // Page explicitly provided as a valid positive integer — offset mode
+  const pageNum = Number(page)
+  if (page !== undefined && page !== null && !isNaN(pageNum) && pageNum > 0) {
+    return paginate(array, pageNum, limit)
+  }
+
+  // Default: no page, no cursor — cursor mode (infinite scroll first call)
+  return cursorPaginate(array, undefined, limit)
 }
