@@ -135,7 +135,7 @@ export function filterProducts(products: any[], query: FilterQuery) {
 
   // ── 4. Paginate ──────────────────────────────────────────────────────────
   const paginated = smartPaginate(result, {
-    page: query.page,
+    page: query.page !== undefined && query.page !== null && !isNaN(Number(query.page)) ? Number(query.page) : undefined,
     limit: query.limit ?? 20,
     cursor: query.cursor,
   })
