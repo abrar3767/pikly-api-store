@@ -92,7 +92,7 @@ export class ProductsService implements OnModuleInit {
     })
 
     const facets = (query as any).includeFacets
-      ? buildFacets(fullFiltered.items, query as any)
+      ? buildFacets(active, query as any)
       : null
 
     const result = {
