@@ -35,27 +35,12 @@ export class CategoriesController {
   @Get(':slug/products')
   @ApiOperation({ summary: 'Get products filtered by category slug' })
   @ApiParam({ name: 'slug' })
-  findProducts(@Param('slug') slug: string, @Query() query: any) {
-    // Pass the shared in-memory products array — no extra DB call, always fresh
-    const result = this.categoriesService.findProducts(slug, this.productsService.products, query)
-    return successResponse({
-      products: result.items,
-      pagination: {
-        total: result.total,
-        limit: result.limit,
-        hasNextPage: result.hasNextPage,
-        hasPrevPage: result.hasPrevPage,
-        mode: (result as any).mode,
-        ...((result as any).mode === 'offset' && {
-          page: (result as any).page,
-          totalPages: (result as any).totalPages,
-        }),
-        ...((result as any).mode === 'cursor' && {
-          nextCursor: (result as any).nextCursor,
-          prevCursor: (result as any).prevCursor,
-        }),
-      },
-      appliedFilters: result.appliedFilters,
-    })
+  async findProducts(@Param('slug') slug: string, @Query() query: any) {
+    const { data } = await this.categoriesService.findProducts(
+      slug,
+      this.productsService.products,
+      query,
+    )
+    return paginatedResponse(data, data.pagination, {})
   }
 }

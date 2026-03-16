@@ -8,17 +8,20 @@ import {
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import Fuse from 'fuse.js'
-import { filterProducts } from '../common/filter-engine'
-import { buildFacets } from '../common/facet-engine'
 import { smartPaginate } from '../common/api-utils'
 import { CacheService, TTL } from '../common/cache.service'
 import { RedisService } from '../redis/redis.service'
+import { AlgoliaService } from '../algolia/algolia.service'
 import { FilterProductsDto } from './dto/filter-products.dto'
 import { ReviewQueryDto } from './dto/review-query.dto'
 import { SubmitReviewDto } from './dto/submit-review.dto'
 import { AdminCreateProductDto } from './dto/admin-create-product.dto'
 import { AdminUpdateProductDto } from './dto/admin-update-product.dto'
 import { Product, ProductDocument } from '../database/product.schema'
+
+// NOTE: filter-engine.ts and facet-engine.ts are no longer used.
+// All filtering and faceting is now handled by AlgoliaService.
+// Those two files can be safely deleted from src/common/.
 
 @Injectable()
 export class ProductsService implements OnModuleInit {
@@ -30,6 +33,7 @@ export class ProductsService implements OnModuleInit {
     @InjectModel(Product.name) private readonly productModel: Model<ProductDocument>,
     private readonly cache: CacheService,
     private readonly redis: RedisService,
+    private readonly algolia: AlgoliaService,
   ) {}
 
   async onModuleInit() {
@@ -43,6 +47,14 @@ export class ProductsService implements OnModuleInit {
     const docs = await this.productModel.find({}).lean()
     this.products = docs.map(({ _id, __v, ...rest }: any) => rest)
     this.logger.log(`Product store loaded: ${this.products.length} products`)
+
+    // Sync active products to Algolia in the background.
+    // Do NOT await — startup must not block on Algolia.
+    if (this.algolia.isReady()) {
+      this.algolia
+        .syncAll(this.products.filter((p: any) => p.isActive))
+        .catch((err) => this.logger.error(`Algolia background sync failed: ${err.message}`))
+    }
   }
 
   async invalidate() {
@@ -55,7 +67,7 @@ export class ProductsService implements OnModuleInit {
   }
 
   findActiveProducts(): any[] {
-    return this.products.filter((p) => p.isActive)
+    return this.products.filter((p: any) => p.isActive)
   }
   findProductById(id: string): any | undefined {
     return this.products.find((p) => p.id === id && p.isActive)
@@ -70,56 +82,21 @@ export class ProductsService implements OnModuleInit {
 
   // ── Main product list ──────────────────────────────────────────────────────
 
-  findAll(query: FilterProductsDto) {
+  async findAll(query: FilterProductsDto) {
+    // Cache key from sorted query params (same as before)
     const sortedQuery = Object.keys(query as any)
       .sort()
-      .reduce((acc: any, k) => {
-        acc[k] = (query as any)[k]
-        return acc
-      }, {})
+      .reduce((acc: any, k) => { acc[k] = (query as any)[k]; return acc }, {})
     const cacheKey = `products:list:${JSON.stringify(sortedQuery)}`
 
     const cached = this.cache.get<any>(cacheKey)
     if (cached) return { ...cached, meta: { ...cached.meta, cacheHit: true } }
 
-    const active = this.findActiveProducts()
+    // Algolia handles everything: search, filtering, facets, pagination
+    const result = await this.algolia.fullSearch(query as any, this.findActiveProducts())
 
-    const fullFiltered = filterProducts(active, { ...query, page: 1, limit: 99999 })
-    const paginated = smartPaginate(fullFiltered.items, {
-      page: query.page !== undefined && query.page !== null && !isNaN(Number(query.page)) ? Number(query.page) : undefined,
-      limit: query.limit ?? 20,
-      cursor: (query as any).cursor,
-    })
-
-    const facets = (query as any).includeFacets
-      ? buildFacets(active, query as any)
-      : null
-
-    const result = {
-      products: paginated.items,
-      pagination: {
-        total: paginated.total,
-        limit: paginated.limit,
-        hasNextPage: paginated.hasNextPage,
-        hasPrevPage: paginated.hasPrevPage,
-        mode: paginated.mode,
-        ...(paginated.mode === 'offset' && {
-          page: (paginated as any).page,
-          totalPages: (paginated as any).totalPages,
-        }),
-        ...(paginated.mode === 'cursor' && {
-          nextCursor: (paginated as any).nextCursor,
-          prevCursor: (paginated as any).prevCursor,
-        }),
-      },
-      facets,
-      appliedFilters: fullFiltered.appliedFilters,
-      sortOptions: fullFiltered.sortOptions,
-      searchMeta: fullFiltered.searchMeta,
-    }
-
-    this.cache.set(cacheKey, { data: result }, TTL.PRODUCTS)
-    return { data: result, cacheHit: false }
+    this.cache.set(cacheKey, { data: result.data }, TTL.PRODUCTS)
+    return result
   }
 
   findFeatured() {
@@ -229,14 +206,8 @@ export class ProductsService implements OnModuleInit {
       )
       .slice(0, 8)
       .map((p) => ({
-        id: p.id,
-        slug: p.slug,
-        title: p.title,
-        brand: p.brand,
-        media: p.media,
-        pricing: p.pricing,
-        ratings: p.ratings,
-        onSale: p.onSale,
+        id: p.id, slug: p.slug, title: p.title, brand: p.brand,
+        media: p.media, pricing: p.pricing, ratings: p.ratings, onSale: p.onSale,
       }))
 
     const seed = product.id.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)
@@ -245,13 +216,8 @@ export class ProductsService implements OnModuleInit {
       .sort((a, b) => ((seed + a.id.charCodeAt(0)) % 1000) - ((seed + b.id.charCodeAt(0)) % 1000))
       .slice(0, 4)
       .map((p) => ({
-        id: p.id,
-        slug: p.slug,
-        title: p.title,
-        brand: p.brand,
-        media: p.media,
-        pricing: p.pricing,
-        ratings: p.ratings,
+        id: p.id, slug: p.slug, title: p.title, brand: p.brand,
+        media: p.media, pricing: p.pricing, ratings: p.ratings,
       }))
 
     const stock = product.inventory?.stock ?? 0
@@ -280,44 +246,26 @@ export class ProductsService implements OnModuleInit {
     if (query.verified === true) reviews = reviews.filter((r) => r.verified === true)
 
     switch (query.sort) {
-      case 'helpful':
-        reviews.sort((a, b) => b.helpful - a.helpful)
-        break
-      case 'rating_high':
-        reviews.sort((a, b) => b.rating - a.rating)
-        break
-      case 'rating_low':
-        reviews.sort((a, b) => a.rating - b.rating)
-        break
-      default:
-        reviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      case 'helpful':    reviews.sort((a, b) => b.helpful - a.helpful); break
+      case 'rating_high':reviews.sort((a, b) => b.rating  - a.rating);  break
+      case 'rating_low': reviews.sort((a, b) => a.rating  - b.rating);  break
+      default:           reviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     }
 
     const paginated = smartPaginate(reviews, {
-      page: query.page,
-      limit: query.limit ?? 10,
-      cursor: query.cursor,
+      page: query.page, limit: query.limit ?? 10, cursor: query.cursor,
     })
     return {
       reviews: paginated.items,
       pagination: {
-        total: paginated.total,
-        limit: paginated.limit,
-        hasNextPage: paginated.hasNextPage,
-        hasPrevPage: paginated.hasPrevPage,
+        total: paginated.total, limit: paginated.limit,
+        hasNextPage: paginated.hasNextPage, hasPrevPage: paginated.hasPrevPage,
         mode: paginated.mode,
-        ...(paginated.mode === 'offset' && {
-          page: (paginated as any).page,
-          totalPages: (paginated as any).totalPages,
-        }),
-        ...(paginated.mode === 'cursor' && {
-          nextCursor: (paginated as any).nextCursor,
-          prevCursor: (paginated as any).prevCursor,
-        }),
+        ...(paginated.mode === 'offset' && { page: (paginated as any).page, totalPages: (paginated as any).totalPages }),
+        ...(paginated.mode === 'cursor' && { nextCursor: (paginated as any).nextCursor, prevCursor: (paginated as any).prevCursor }),
       },
       summary: {
-        average: product.ratings.average,
-        total: product.ratings.count,
+        average: product.ratings.average, total: product.ratings.count,
         distribution: product.ratings.distribution ?? {},
         verifiedCount: reviews.filter((r) => r.verified).length,
         withImages: reviews.filter((r) => r.images?.length > 0).length,
@@ -328,65 +276,34 @@ export class ProductsService implements OnModuleInit {
   async submitReview(slug: string, userId: string, dto: SubmitReviewDto) {
     const product = await this.productModel.findOne({ slug })
     if (!product)
-      throw new NotFoundException({
-        code: 'PRODUCT_NOT_FOUND',
-        message: `Product "${slug}" not found`,
-      })
+      throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${slug}" not found` })
 
-    // BUG-01: prevent the same user from submitting multiple reviews for the
-    // same product. Without this check, a single user can spam reviews and
-    // artificially inflate or tank the product's rating.
     const alreadyReviewed = (product.reviews ?? []).some((r: any) => r.userId === userId)
-    if (alreadyReviewed) {
-      throw new BadRequestException({
-        code: 'ALREADY_REVIEWED',
-        message: 'You have already submitted a review for this product.',
-      })
-    }
+    if (alreadyReviewed)
+      throw new BadRequestException({ code: 'ALREADY_REVIEWED', message: 'You have already submitted a review for this product.' })
 
     const review = {
-      id: `rev_${userId}_${Date.now()}`,
-      userId,
-      rating: dto.rating,
-      title: dto.title,
-      body: dto.body,
-      verified: false,
-      helpful: 0,
-      images: dto.images ?? [],
+      id: `rev_${userId}_${Date.now()}`, userId,
+      rating: dto.rating, title: dto.title, body: dto.body,
+      verified: false, helpful: 0, images: dto.images ?? [],
       createdAt: new Date().toISOString(),
     }
 
-    // BUG-02: use a single aggregation pipeline update to push the review AND
-    // recompute the average atomically in one round-trip. The previous
-    // implementation did three separate operations (push → reload → set average),
-    // creating a race condition where concurrent reviews could both read the
-    // same old average and one review's contribution would be lost permanently.
-    //
-    // The pipeline: (1) appends the new review to the array, (2) recomputes the
-    // average from the final array, (3) sets the new count — all in a single
-    // atomic update. MongoDB processes pipeline stages in order within the same
-    // operation, so no concurrent write can interleave between stages.
     await this.productModel.updateOne({ slug }, [
       {
         $set: {
           reviews: { $concatArrays: ['$reviews', [review]] },
           'ratings.count': { $add: ['$ratings.count', 1] },
           'ratings.average': {
-            $round: [
-              {
-                $divide: [
-                  {
-                    $reduce: {
-                      input: { $concatArrays: ['$reviews', [review]] },
-                      initialValue: 0,
-                      in: { $add: ['$$value', '$$this.rating'] },
-                    },
-                  },
-                  { $add: ['$ratings.count', 1] },
-                ],
-              },
-              1,
-            ],
+            $round: [{
+              $divide: [{
+                $reduce: {
+                  input: { $concatArrays: ['$reviews', [review]] },
+                  initialValue: 0,
+                  in: { $add: ['$$value', '$$this.rating'] },
+                },
+              }, { $add: ['$ratings.count', 1] }],
+            }, 1],
           },
         },
       },
@@ -412,9 +329,7 @@ export class ProductsService implements OnModuleInit {
         if (cached.inventory.sold !== undefined) cached.inventory.sold += quantity
       }
     }
-    if (!result) {
-      this.logger.warn(`Stock decrement failed: productId=${productId} requested=${quantity}`)
-    }
+    if (!result) this.logger.warn(`Stock decrement failed: productId=${productId} requested=${quantity}`)
     return !!result
   }
 
@@ -433,12 +348,7 @@ export class ProductsService implements OnModuleInit {
 
   // ── Admin ─────────────────────────────────────────────────────────────────
 
-  async adminFindAll(query: {
-    page?: number
-    limit?: number
-    search?: string
-    isActive?: boolean
-  }) {
+  async adminFindAll(query: { page?: number; limit?: number; search?: string; isActive?: boolean }) {
     const filter: any = {}
     if (query.isActive !== undefined) filter.isActive = query.isActive
     if (query.search) {
@@ -448,36 +358,24 @@ export class ProductsService implements OnModuleInit {
         { brand: { $regex: escaped, $options: 'i' } },
       ]
     }
-    const p = Number(query.page ?? 1),
-      l = Number(query.limit ?? 20),
-      skip = (p - 1) * l
+    const p = Number(query.page ?? 1), l = Number(query.limit ?? 20), skip = (p - 1) * l
     const [items, total] = await Promise.all([
       this.productModel.find(filter).skip(skip).limit(l).lean(),
       this.productModel.countDocuments(filter),
     ])
     return {
       products: items,
-      pagination: {
-        total,
-        page: p,
-        limit: l,
-        totalPages: Math.ceil(total / l),
-        hasNextPage: p * l < total,
-      },
+      pagination: { total, page: p, limit: l, totalPages: Math.ceil(total / l), hasNextPage: p * l < total },
     }
   }
 
   async adminCreate(body: AdminCreateProductDto) {
-    const existing = await this.productModel.findOne({
-      $or: [{ id: body.id }, { slug: body.slug }],
-    })
+    const existing = await this.productModel.findOne({ $or: [{ id: body.id }, { slug: body.slug }] })
     if (existing)
-      throw new BadRequestException({
-        code: 'DUPLICATE_PRODUCT',
-        message: 'A product with this id or slug already exists',
-      })
+      throw new BadRequestException({ code: 'DUPLICATE_PRODUCT', message: 'A product with this id or slug already exists' })
     const product = await this.productModel.create(body)
     await this.invalidate()
+    if (this.algolia.isReady()) await this.algolia.syncOne({ ...body, isActive: true })
     this.logger.log(`Product created: id=${body.id}`)
     return product
   }
@@ -485,22 +383,18 @@ export class ProductsService implements OnModuleInit {
   async adminUpdate(id: string, body: AdminUpdateProductDto) {
     const product = await this.productModel.findOneAndUpdate({ id }, { $set: body }, { new: true })
     if (!product)
-      throw new NotFoundException({
-        code: 'PRODUCT_NOT_FOUND',
-        message: `Product "${id}" not found`,
-      })
+      throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${id}" not found` })
     await this.invalidate()
+    if (this.algolia.isReady()) await this.algolia.syncOne(product)
     return product
   }
 
   async adminDelete(id: string) {
     const product = await this.productModel.findOneAndDelete({ id })
     if (!product)
-      throw new NotFoundException({
-        code: 'PRODUCT_NOT_FOUND',
-        message: `Product "${id}" not found`,
-      })
+      throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${id}" not found` })
     await this.invalidate()
+    if (this.algolia.isReady()) await this.algolia.deleteOne(id)
     this.logger.log(`Product deleted: id=${id}`)
     return { deleted: true, id }
   }

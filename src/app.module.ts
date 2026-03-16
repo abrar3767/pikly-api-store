@@ -4,6 +4,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { MongooseModule } from '@nestjs/mongoose'
 import { RedisModule } from './redis/redis.module'
 import { MailModule } from './mail/mail.module'
+import { AlgoliaModule } from './algolia/algolia.module'
 import { ProductsModule } from './products/products.module'
 import { CategoriesModule } from './categories/categories.module'
 import { CartModule } from './cart/cart.module'
@@ -33,6 +34,7 @@ import { UploadsModule } from './uploads/uploads.module'
     RedisModule,
     MailModule,
     CacheModule,
+    AlgoliaModule,   // ← added: provides AlgoliaService globally
     // Feature modules
     AuthModule,
     UsersModule,

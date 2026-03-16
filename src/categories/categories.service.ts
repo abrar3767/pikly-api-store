@@ -2,8 +2,8 @@ import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import { CacheService, TTL } from '../common/cache.service'
-import { filterProducts } from '../common/filter-engine'
 import { Category, CategoryDocument } from '../database/category.schema'
+import { AlgoliaService } from '../algolia/algolia.service'
 
 @Injectable()
 export class CategoriesService implements OnModuleInit {
@@ -12,6 +12,7 @@ export class CategoriesService implements OnModuleInit {
   constructor(
     @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
     private readonly cache: CacheService,
+    private readonly algolia: AlgoliaService,
   ) {}
 
   async onModuleInit() {
@@ -54,24 +55,20 @@ export class CategoriesService implements OnModuleInit {
   findOne(slug: string) {
     const cat = this.categories.find((c) => c.slug === slug)
     if (!cat)
-      throw new NotFoundException({
-        code: 'CATEGORY_NOT_FOUND',
-        message: `Category "${slug}" not found`,
-      })
+      throw new NotFoundException({ code: 'CATEGORY_NOT_FOUND', message: `Category "${slug}" not found` })
     return { ...cat, children: this.categories.filter((c) => c.parentId === cat.id) }
   }
 
-  // products is passed in from the controller — it comes from ProductsService.products
-  findProducts(slug: string, products: any[], query: any) {
+  // products passed in from controller (from ProductsService.products)
+  async findProducts(slug: string, products: any[], query: any) {
     const cat = this.categories.find((c) => c.slug === slug)
     if (!cat)
-      throw new NotFoundException({
-        code: 'CATEGORY_NOT_FOUND',
-        message: `Category "${slug}" not found`,
-      })
-    return filterProducts(
-      products.filter((p) => p.isActive),
+      throw new NotFoundException({ code: 'CATEGORY_NOT_FOUND', message: `Category "${slug}" not found` })
+
+    // Use Algolia for filtering — pass category slug merged into query
+    return this.algolia.fullSearch(
       { ...query, category: slug },
+      products.filter((p) => p.isActive),
     )
   }
 
@@ -84,10 +81,7 @@ export class CategoriesService implements OnModuleInit {
   async adminUpdate(id: string, body: any) {
     const cat = await this.categoryModel.findOneAndUpdate({ id }, { $set: body }, { new: true })
     if (!cat)
-      throw new NotFoundException({
-        code: 'CATEGORY_NOT_FOUND',
-        message: `Category "${id}" not found`,
-      })
+      throw new NotFoundException({ code: 'CATEGORY_NOT_FOUND', message: `Category "${id}" not found` })
     await this.invalidate()
     return cat
   }
@@ -95,10 +89,7 @@ export class CategoriesService implements OnModuleInit {
   async adminDelete(id: string) {
     const cat = await this.categoryModel.findOneAndDelete({ id })
     if (!cat)
-      throw new NotFoundException({
-        code: 'CATEGORY_NOT_FOUND',
-        message: `Category "${id}" not found`,
-      })
+      throw new NotFoundException({ code: 'CATEGORY_NOT_FOUND', message: `Category "${id}" not found` })
     await this.invalidate()
     return { deleted: true, id }
   }
