@@ -1,562 +1,5150 @@
 [
   {
-    "id": "cat_001",
+    "id": "cat_electronics",
+    "nodeId": "493964",
     "name": "Electronics",
     "slug": "electronics",
+    "amazonPath": "Electronics",
     "parentId": null,
     "level": 0,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "image": "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=400&fit=crop",
     "icon": "Zap",
-    "description": "Latest gadgets, laptops, phones and audio devices.",
-    "productCount": 111,
+    "description": "Laptops, smartphones, cameras, audio, TVs and more.",
+    "productCount": 0,
     "isActive": true,
     "isFeatured": true,
     "sortOrder": 1,
-    "filters": [
+    "facets": [
       {
         "key": "brand",
         "label": "Brand",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
       },
       {
-        "key": "price",
-        "label": "Price Range",
-        "type": "range"
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
       },
       {
         "key": "rating",
         "label": "Rating",
-        "type": "rating"
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "freeShipping",
+        "label": "Free Shipping",
+        "type": "boolean",
+        "algoliaAttr": "freeShipping",
+        "disjunctive": false
+      },
+      {
+        "key": "discount",
+        "label": "Discount",
+        "type": "range",
+        "algoliaAttr": "discountPercent",
+        "disjunctive": false
       }
     ]
   },
   {
-    "id": "cat_002",
+    "id": "cat_computers_accessories",
+    "nodeId": "541966",
+    "name": "Computers & Accessories",
+    "slug": "computers-accessories",
+    "amazonPath": "Electronics > Computers & Accessories",
+    "parentId": "cat_electronics",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1587302786402-0d80e86fd43d?w=400&h=400&fit=crop",
+    "icon": "Monitor",
+    "description": "Laptops, desktops, monitors, keyboards, mice and computer accessories.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 1,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_laptops",
+    "nodeId": "565108",
     "name": "Laptops",
     "slug": "laptops",
-    "parentId": "cat_001",
-    "level": 1,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "amazonPath": "Electronics > Computers & Accessories > Laptops",
+    "parentId": "cat_computers_accessories",
+    "level": 2,
+    "image": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400&h=400&fit=crop",
     "icon": "Laptop",
-    "description": "Gaming laptops, ultrabooks and business laptops.",
-    "productCount": 55,
+    "description": "Gaming laptops, ultrabooks, business laptops and Chromebooks.",
+    "productCount": 0,
     "isActive": true,
     "isFeatured": true,
     "sortOrder": 1,
-    "filters": [
+    "facets": [
       {
         "key": "brand",
         "label": "Brand",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Apple",
+          "Dell",
+          "HP",
+          "Lenovo",
+          "ASUS",
+          "Acer",
+          "MSI",
+          "Razer",
+          "Microsoft",
+          "Samsung"
+        ]
       },
       {
-        "key": "ram",
+        "key": "attrs",
         "label": "RAM",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "ram",
+        "values": [
+          "8GB",
+          "16GB",
+          "32GB",
+          "64GB"
+        ]
       },
       {
-        "key": "storage",
+        "key": "attrs",
         "label": "Storage",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "storage",
+        "values": [
+          "256GB SSD",
+          "512GB SSD",
+          "1TB SSD",
+          "2TB SSD"
+        ]
       },
       {
-        "key": "processor",
+        "key": "attrs",
         "label": "Processor",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "processor",
+        "values": [
+          "Intel Core i5",
+          "Intel Core i7",
+          "Intel Core i9",
+          "AMD Ryzen 5",
+          "AMD Ryzen 7",
+          "AMD Ryzen 9",
+          "Apple M2",
+          "Apple M3"
+        ]
       },
       {
-        "key": "gpu",
+        "key": "attrs",
         "label": "GPU",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "gpu",
+        "values": [
+          "Integrated",
+          "NVIDIA RTX 3060",
+          "NVIDIA RTX 4060",
+          "NVIDIA RTX 4070",
+          "NVIDIA RTX 4080",
+          "AMD Radeon"
+        ]
       },
       {
-        "key": "price",
+        "key": "attrs",
+        "label": "Screen Size",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "screenSize",
+        "values": [
+          "13.3\"",
+          "14\"",
+          "15.6\"",
+          "16\"",
+          "17.3\""
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Operating System",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "os",
+        "values": [
+          "Windows 11",
+          "macOS",
+          "Chrome OS",
+          "Linux"
+        ]
+      },
+      {
+        "key": "minPrice",
         "label": "Price",
-        "type": "range"
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Customer Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "discount",
+        "label": "Discount",
+        "type": "range",
+        "algoliaAttr": "discountPercent",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime Eligible",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "freeShipping",
+        "label": "Free Shipping",
+        "type": "boolean",
+        "algoliaAttr": "freeShipping",
+        "disjunctive": false
+      },
+      {
+        "key": "onSale",
+        "label": "On Sale",
+        "type": "boolean",
+        "algoliaAttr": "onSale",
+        "disjunctive": false
       }
     ]
   },
   {
-    "id": "cat_003",
+    "id": "cat_gaming_laptops",
+    "nodeId": "2335451011",
     "name": "Gaming Laptops",
     "slug": "gaming-laptops",
-    "parentId": "cat_002",
-    "level": 2,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "amazonPath": "Electronics > Computers & Accessories > Laptops > Gaming Laptops",
+    "parentId": "cat_laptops",
+    "level": 3,
+    "image": "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=400&h=400&fit=crop",
     "icon": "Gamepad2",
-    "description": "High performance gaming laptops with latest GPUs.",
-    "productCount": 30,
+    "description": "High-performance gaming laptops with dedicated GPUs.",
+    "productCount": 0,
     "isActive": true,
     "isFeatured": false,
     "sortOrder": 1,
-    "filters": [
+    "facets": [
       {
         "key": "brand",
         "label": "Brand",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "ASUS ROG",
+          "Alienware",
+          "MSI",
+          "Razer",
+          "Lenovo Legion",
+          "HP Omen",
+          "Acer Predator"
+        ]
       },
       {
-        "key": "gpu",
+        "key": "attrs",
         "label": "GPU",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "gpu",
+        "values": [
+          "NVIDIA RTX 4060",
+          "NVIDIA RTX 4070",
+          "NVIDIA RTX 4080",
+          "NVIDIA RTX 4090"
+        ]
       },
       {
-        "key": "ram",
+        "key": "attrs",
         "label": "RAM",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "ram",
+        "values": [
+          "16GB",
+          "32GB",
+          "64GB"
+        ]
       },
       {
-        "key": "price",
+        "key": "attrs",
+        "label": "Refresh Rate",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "refreshRate",
+        "values": [
+          "144Hz",
+          "165Hz",
+          "240Hz",
+          "360Hz"
+        ]
+      },
+      {
+        "key": "minPrice",
         "label": "Price",
-        "type": "range"
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
       }
     ]
   },
   {
-    "id": "cat_004",
+    "id": "cat_ultrabooks",
+    "nodeId": "2335752011",
     "name": "Ultrabooks",
     "slug": "ultrabooks",
-    "parentId": "cat_002",
-    "level": 2,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "amazonPath": "Electronics > Computers & Accessories > Laptops > Ultrabooks",
+    "parentId": "cat_laptops",
+    "level": 3,
+    "image": "https://images.unsplash.com/photo-1542744095-fcf48d80b0fd?w=400&h=400&fit=crop",
     "icon": "Laptop",
-    "description": "Ultra-thin, lightweight laptops for professionals.",
-    "productCount": 25,
+    "description": "Ultra-thin, lightweight laptops for professionals and students.",
+    "productCount": 0,
     "isActive": true,
     "isFeatured": false,
     "sortOrder": 2,
-    "filters": [
+    "facets": [
       {
         "key": "brand",
         "label": "Brand",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Apple",
+          "Dell",
+          "HP",
+          "Lenovo",
+          "ASUS",
+          "Microsoft"
+        ]
       },
       {
-        "key": "ram",
-        "label": "RAM",
-        "type": "checkbox"
+        "key": "attrs",
+        "label": "Processor",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "processor",
+        "values": [
+          "Apple M2",
+          "Apple M3",
+          "Intel Core i7",
+          "Intel Core i5"
+        ]
       },
       {
-        "key": "batteryLife",
+        "key": "attrs",
         "label": "Battery Life",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "batteryLife",
+        "values": [
+          "10+ hrs",
+          "12+ hrs",
+          "15+ hrs",
+          "18+ hrs"
+        ]
       },
       {
-        "key": "price",
+        "key": "attrs",
+        "label": "Weight",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "weight",
+        "values": [
+          "Under 1kg",
+          "1-1.5kg",
+          "1.5-2kg"
+        ]
+      },
+      {
+        "key": "minPrice",
         "label": "Price",
-        "type": "range"
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
       }
     ]
   },
   {
-    "id": "cat_005",
+    "id": "cat_desktops",
+    "nodeId": "193870011",
+    "name": "Desktop Computers",
+    "slug": "desktop-computers",
+    "amazonPath": "Electronics > Computers & Accessories > Desktop Computers",
+    "parentId": "cat_computers_accessories",
+    "level": 2,
+    "image": "https://images.unsplash.com/photo-1593640408182-31c228f19cf6?w=400&h=400&fit=crop",
+    "icon": "Monitor",
+    "description": "Desktop PCs, all-in-ones, mini PCs and gaming desktops.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 2,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Apple",
+          "Dell",
+          "HP",
+          "Lenovo",
+          "ASUS",
+          "Acer",
+          "Intel"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Processor",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "processor",
+        "values": [
+          "Intel Core i5",
+          "Intel Core i7",
+          "Intel Core i9",
+          "AMD Ryzen 5",
+          "AMD Ryzen 7",
+          "Apple M2"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "RAM",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "ram",
+        "values": [
+          "8GB",
+          "16GB",
+          "32GB",
+          "64GB"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Storage",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "storage",
+        "values": [
+          "512GB",
+          "1TB",
+          "2TB",
+          "4TB"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Form Factor",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "formFactor",
+        "values": [
+          "Tower",
+          "All-in-One",
+          "Mini PC",
+          "Gaming Tower"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_monitors",
+    "nodeId": "1292115011",
+    "name": "Monitors",
+    "slug": "monitors",
+    "amazonPath": "Electronics > Computers & Accessories > Monitors",
+    "parentId": "cat_computers_accessories",
+    "level": 2,
+    "image": "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&h=400&fit=crop",
+    "icon": "Monitor",
+    "description": "Computer monitors — gaming, professional, ultrawide and 4K displays.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 3,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Samsung",
+          "LG",
+          "ASUS",
+          "Dell",
+          "AOC",
+          "BenQ",
+          "Acer",
+          "ViewSonic"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Screen Size",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "screenSize",
+        "values": [
+          "24\"",
+          "27\"",
+          "32\"",
+          "34\" Ultrawide",
+          "38\" Ultrawide",
+          "49\" Super Ultrawide"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Resolution",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "resolution",
+        "values": [
+          "1080p FHD",
+          "1440p QHD",
+          "4K UHD",
+          "5K",
+          "8K"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Refresh Rate",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "refreshRate",
+        "values": [
+          "60Hz",
+          "144Hz",
+          "165Hz",
+          "240Hz",
+          "360Hz"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Panel Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "panelType",
+        "values": [
+          "IPS",
+          "VA",
+          "TN",
+          "OLED",
+          "Mini-LED"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_memory_storage",
+    "nodeId": "172456",
+    "name": "Memory & Storage",
+    "slug": "memory-storage",
+    "amazonPath": "Electronics > Computers & Accessories > Memory & Storage",
+    "parentId": "cat_computers_accessories",
+    "level": 2,
+    "image": "https://images.unsplash.com/photo-1591488320449-011701bb6704?w=400&h=400&fit=crop",
+    "icon": "HardDrive",
+    "description": "RAM, SSDs, hard drives, USB flash drives and memory cards.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 4,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Samsung",
+          "SanDisk",
+          "Kingston",
+          "WD",
+          "Seagate",
+          "Crucial",
+          "Corsair",
+          "G.Skill"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Capacity",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "capacity",
+        "values": [
+          "64GB",
+          "128GB",
+          "256GB",
+          "512GB",
+          "1TB",
+          "2TB",
+          "4TB",
+          "8TB"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "storageType",
+        "values": [
+          "SSD",
+          "HDD",
+          "NVMe SSD",
+          "microSD",
+          "USB Flash Drive",
+          "RAM DDR4",
+          "RAM DDR5"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Read Speed",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "readSpeed",
+        "values": [
+          "Up to 100MB/s",
+          "Up to 560MB/s",
+          "Up to 3500MB/s",
+          "Up to 7000MB/s"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Interface",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "interface",
+        "values": [
+          "SATA",
+          "NVMe PCIe",
+          "USB 3.0",
+          "USB-C",
+          "microSDXC"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_audio",
+    "nodeId": "172541",
+    "name": "Headphones & Audio",
+    "slug": "headphones-audio",
+    "amazonPath": "Electronics > Headphones & Accessories",
+    "parentId": "cat_electronics",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
+    "icon": "Headphones",
+    "description": "Headphones, earbuds, speakers and all audio accessories.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 2,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Sony",
+          "Bose",
+          "Apple",
+          "Samsung",
+          "JBL",
+          "Beats",
+          "Sennheiser",
+          "Audio-Technica"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "type",
+        "values": [
+          "Over-Ear",
+          "On-Ear",
+          "In-Ear",
+          "True Wireless",
+          "Open-Back",
+          "Closed-Back"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Connectivity",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "connectivity",
+        "values": [
+          "Wired",
+          "Bluetooth 5.0",
+          "Bluetooth 5.3",
+          "USB-C",
+          "3.5mm"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Noise Cancelling",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "noiseCancelling",
+        "values": [
+          "Active (ANC)",
+          "Passive",
+          "None"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Battery Life",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "batteryLife",
+        "values": [
+          "Up to 10hrs",
+          "Up to 20hrs",
+          "Up to 30hrs",
+          "Up to 40hrs",
+          "N/A"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Microphone",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "microphone",
+        "values": [
+          "Built-in",
+          "None",
+          "Detachable"
+        ]
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_cameras",
+    "nodeId": "502394",
+    "name": "Cameras & Photography",
+    "slug": "cameras-photography",
+    "amazonPath": "Electronics > Camera & Photo",
+    "parentId": "cat_electronics",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&h=400&fit=crop",
+    "icon": "Camera",
+    "description": "Digital cameras, mirrorless cameras, lenses, drones and photography accessories.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 3,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Sony",
+          "Canon",
+          "Nikon",
+          "Fujifilm",
+          "Panasonic",
+          "Olympus",
+          "GoPro",
+          "DJI"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Camera Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "cameraType",
+        "values": [
+          "Mirrorless",
+          "DSLR",
+          "Point & Shoot",
+          "Action Camera",
+          "Drone",
+          "Instant"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Megapixels",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "megapixels",
+        "values": [
+          "12MP",
+          "20MP",
+          "24MP",
+          "33MP",
+          "45MP",
+          "61MP"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Video",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "videoCapability",
+        "values": [
+          "1080p",
+          "4K",
+          "4K 60fps",
+          "4K 120fps",
+          "6K",
+          "8K"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Sensor",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "sensorSize",
+        "values": [
+          "Full Frame",
+          "APS-C",
+          "Micro Four Thirds",
+          "1 inch",
+          "1/2.3\""
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_tvs",
+    "nodeId": "1266092011",
+    "name": "Televisions",
+    "slug": "televisions",
+    "amazonPath": "Electronics > Television & Video > Televisions",
+    "parentId": "cat_electronics",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1593359677879-a4bb92f4834a?w=400&h=400&fit=crop",
+    "icon": "Tv",
+    "description": "Smart TVs, OLED, QLED and LED televisions.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 4,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Samsung",
+          "LG",
+          "Sony",
+          "TCL",
+          "Hisense",
+          "Vizio",
+          "Insignia"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Screen Size",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "screenSize",
+        "values": [
+          "32\"",
+          "43\"",
+          "50\"",
+          "55\"",
+          "65\"",
+          "75\"",
+          "85\""
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Resolution",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "resolution",
+        "values": [
+          "1080p FHD",
+          "4K UHD",
+          "8K UHD"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Display Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "displayType",
+        "values": [
+          "LED",
+          "QLED",
+          "OLED",
+          "Mini-LED",
+          "NANO Cell",
+          "QD-OLED"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Refresh Rate",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "refreshRate",
+        "values": [
+          "60Hz",
+          "120Hz",
+          "144Hz"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Smart TV",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "smartTV",
+        "values": [
+          "Yes",
+          "No"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "HDR",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "hdr",
+        "values": [
+          "HDR10",
+          "Dolby Vision",
+          "HDR10+",
+          "None"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_cell_phones",
+    "nodeId": "2335753011",
+    "name": "Cell Phones & Accessories",
+    "slug": "cell-phones-accessories",
+    "amazonPath": "Cell Phones & Accessories",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=400&fit=crop",
+    "icon": "Smartphone",
+    "description": "Smartphones, cases, chargers, screen protectors and all phone accessories.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 2,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "freeShipping",
+        "label": "Free Shipping",
+        "type": "boolean",
+        "algoliaAttr": "freeShipping",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_smartphones",
+    "nodeId": "2407749011",
     "name": "Smartphones",
     "slug": "smartphones",
-    "parentId": "cat_001",
+    "amazonPath": "Cell Phones & Accessories > Smartphones",
+    "parentId": "cat_cell_phones",
     "level": 1,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "image": "https://images.unsplash.com/photo-1580910051074-3eb694886505?w=400&h=400&fit=crop",
     "icon": "Smartphone",
-    "description": "Android phones, iPhones and flagship devices.",
-    "productCount": 48,
+    "description": "Latest Android and iPhone smartphones.",
+    "productCount": 0,
     "isActive": true,
     "isFeatured": true,
-    "sortOrder": 2,
-    "filters": [
-      {
-        "key": "brand",
-        "label": "Brand",
-        "type": "checkbox"
-      },
-      {
-        "key": "ram",
-        "label": "RAM",
-        "type": "checkbox"
-      },
-      {
-        "key": "storage",
-        "label": "Storage",
-        "type": "checkbox"
-      },
-      {
-        "key": "camera",
-        "label": "Camera",
-        "type": "checkbox"
-      },
-      {
-        "key": "price",
-        "label": "Price",
-        "type": "range"
-      }
-    ]
-  },
-  {
-    "id": "cat_006",
-    "name": "Android",
-    "slug": "android",
-    "parentId": "cat_005",
-    "level": 2,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
-    "icon": "Smartphone",
-    "description": "Latest Android flagship and mid-range phones.",
-    "productCount": 40,
-    "isActive": true,
-    "isFeatured": false,
     "sortOrder": 1,
-    "filters": [
+    "facets": [
       {
         "key": "brand",
         "label": "Brand",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Apple",
+          "Samsung",
+          "Google",
+          "OnePlus",
+          "Motorola",
+          "Sony",
+          "Nothing"
+        ]
       },
       {
-        "key": "ram",
+        "key": "attrs",
+        "label": "Storage",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "storage",
+        "values": [
+          "64GB",
+          "128GB",
+          "256GB",
+          "512GB",
+          "1TB"
+        ]
+      },
+      {
+        "key": "attrs",
         "label": "RAM",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "ram",
+        "values": [
+          "4GB",
+          "6GB",
+          "8GB",
+          "12GB",
+          "16GB"
+        ]
       },
       {
-        "key": "storage",
-        "label": "Storage",
-        "type": "checkbox"
+        "key": "attrs",
+        "label": "OS",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "os",
+        "values": [
+          "iOS 17",
+          "Android 13",
+          "Android 14"
+        ]
       },
       {
-        "key": "price",
-        "label": "Price",
-        "type": "range"
-      }
-    ]
-  },
-  {
-    "id": "cat_007",
-    "name": "iPhone",
-    "slug": "iphone",
-    "parentId": "cat_005",
-    "level": 2,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
-    "icon": "Smartphone",
-    "description": "Apple iPhone 16 series and previous models.",
-    "productCount": 8,
-    "isActive": true,
-    "isFeatured": true,
-    "sortOrder": 2,
-    "filters": [
-      {
-        "key": "storage",
-        "label": "Storage",
-        "type": "checkbox"
-      },
-      {
-        "key": "price",
-        "label": "Price",
-        "type": "range"
-      }
-    ]
-  },
-  {
-    "id": "cat_008",
-    "name": "Audio",
-    "slug": "audio",
-    "parentId": "cat_001",
-    "level": 1,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
-    "icon": "Headphones",
-    "description": "Headphones, earbuds and speakers.",
-    "productCount": 54,
-    "isActive": true,
-    "isFeatured": true,
-    "sortOrder": 3,
-    "filters": [
-      {
-        "key": "brand",
-        "label": "Brand",
-        "type": "checkbox"
-      },
-      {
-        "key": "connectivity",
+        "key": "attrs",
         "label": "Connectivity",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "connectivity",
+        "values": [
+          "5G",
+          "4G LTE",
+          "5G mmWave"
+        ]
       },
       {
-        "key": "noiseCancellation",
-        "label": "ANC",
-        "type": "checkbox"
-      },
-      {
-        "key": "price",
-        "label": "Price",
-        "type": "range"
-      }
-    ]
-  },
-  {
-    "id": "cat_009",
-    "name": "Fashion",
-    "slug": "fashion",
-    "parentId": null,
-    "level": 0,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
-    "icon": "Shirt",
-    "description": "Trendy clothing, shoes and accessories for men.",
-    "productCount": 155,
-    "isActive": true,
-    "isFeatured": true,
-    "sortOrder": 2,
-    "filters": [
-      {
-        "key": "brand",
-        "label": "Brand",
-        "type": "checkbox"
-      },
-      {
-        "key": "price",
-        "label": "Price",
-        "type": "range"
-      },
-      {
-        "key": "rating",
-        "label": "Rating",
-        "type": "rating"
-      }
-    ]
-  },
-  {
-    "id": "cat_010",
-    "name": "Mens Clothing",
-    "slug": "mens-clothing",
-    "parentId": "cat_009",
-    "level": 1,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
-    "icon": "Shirt",
-    "description": "Shirts, pants, jackets and more for men.",
-    "productCount": 80,
-    "isActive": true,
-    "isFeatured": false,
-    "sortOrder": 1,
-    "filters": [
-      {
-        "key": "brand",
-        "label": "Brand",
-        "type": "checkbox"
-      },
-      {
-        "key": "sizes",
-        "label": "Size",
-        "type": "checkbox"
+        "key": "attrs",
+        "label": "Camera",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "camera",
+        "values": [
+          "12MP",
+          "48MP",
+          "50MP",
+          "108MP",
+          "200MP"
+        ]
       },
       {
         "key": "color",
         "label": "Color",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
       },
       {
-        "key": "fabric",
-        "label": "Fabric",
-        "type": "checkbox"
-      },
-      {
-        "key": "price",
+        "key": "minPrice",
         "label": "Price",
-        "type": "range"
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
       }
     ]
   },
   {
-    "id": "cat_011",
+    "id": "cat_phone_cases",
+    "nodeId": "2407748011",
+    "name": "Cases & Covers",
+    "slug": "phone-cases-covers",
+    "amazonPath": "Cell Phones & Accessories > Cases & Covers",
+    "parentId": "cat_cell_phones",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=400&fit=crop",
+    "icon": "Shield",
+    "description": "Phone cases, covers and screen protectors for all devices.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 2,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Compatible With",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "compatibility",
+        "values": [
+          "iPhone 15",
+          "iPhone 14",
+          "Samsung Galaxy S24",
+          "Samsung Galaxy S23",
+          "Google Pixel 8"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Material",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "material",
+        "values": [
+          "Silicone",
+          "Leather",
+          "Hard Plastic",
+          "Clear",
+          "Rugged",
+          "Wallet"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Protection",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "protection",
+        "values": [
+          "Military Grade",
+          "Drop Tested",
+          "Waterproof",
+          "Slim",
+          "Shockproof"
+        ]
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_clothing",
+    "nodeId": "7141124011",
+    "name": "Clothing, Shoes & Jewelry",
+    "slug": "clothing-shoes-jewelry",
+    "amazonPath": "Clothing, Shoes & Jewelry",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&h=400&fit=crop",
+    "icon": "Shirt",
+    "description": "Men's, women's and kids clothing, shoes, jewelry and accessories.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 3,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "size",
+        "label": "Size",
+        "type": "checkbox",
+        "algoliaAttr": "sizes",
+        "disjunctive": true
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "onSale",
+        "label": "On Sale",
+        "type": "boolean",
+        "algoliaAttr": "onSale",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_mens_clothing",
+    "nodeId": "1040660",
+    "name": "Men's Clothing",
+    "slug": "mens-clothing",
+    "amazonPath": "Clothing, Shoes & Jewelry > Men",
+    "parentId": "cat_clothing",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1516257984-b1b4d707412e?w=400&h=400&fit=crop",
+    "icon": "User",
+    "description": "Men's shirts, pants, jackets, suits and casual wear.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 1,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "size",
+        "label": "Size",
+        "type": "checkbox",
+        "algoliaAttr": "sizes",
+        "disjunctive": true,
+        "values": [
+          "XS",
+          "S",
+          "M",
+          "L",
+          "XL",
+          "XXL",
+          "3XL",
+          "4XL"
+        ]
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Material",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "material",
+        "values": [
+          "Cotton",
+          "Polyester",
+          "Linen",
+          "Wool",
+          "Denim",
+          "Fleece",
+          "Silk"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Fit",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "fit",
+        "values": [
+          "Regular",
+          "Slim",
+          "Relaxed",
+          "Athletic",
+          "Classic"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "onSale",
+        "label": "On Sale",
+        "type": "boolean",
+        "algoliaAttr": "onSale",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_mens_shirts",
+    "nodeId": "1040662",
+    "name": "Shirts",
+    "slug": "mens-shirts",
+    "amazonPath": "Clothing, Shoes & Jewelry > Men > Shirts",
+    "parentId": "cat_mens_clothing",
+    "level": 2,
+    "image": "https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=400&h=400&fit=crop",
+    "icon": "Shirt",
+    "description": "Men's casual shirts, dress shirts, polo shirts and T-shirts.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 1,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "size",
+        "label": "Size",
+        "type": "checkbox",
+        "algoliaAttr": "sizes",
+        "disjunctive": true,
+        "values": [
+          "XS",
+          "S",
+          "M",
+          "L",
+          "XL",
+          "XXL",
+          "3XL"
+        ]
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Style",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "style",
+        "values": [
+          "T-Shirt",
+          "Polo",
+          "Dress Shirt",
+          "Casual",
+          "Oxford",
+          "Henley"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Sleeve",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "sleeve",
+        "values": [
+          "Short Sleeve",
+          "Long Sleeve",
+          "Sleeveless"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Material",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "material",
+        "values": [
+          "100% Cotton",
+          "Polyester Blend",
+          "Linen",
+          "Bamboo"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_mens_pants",
+    "nodeId": "1040663",
+    "name": "Pants",
+    "slug": "mens-pants",
+    "amazonPath": "Clothing, Shoes & Jewelry > Men > Pants",
+    "parentId": "cat_mens_clothing",
+    "level": 2,
+    "image": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=400&h=400&fit=crop",
+    "icon": "Shirt",
+    "description": "Men's jeans, chinos, dress pants, joggers and shorts.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 2,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Waist",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "waist",
+        "values": [
+          "28\"",
+          "30\"",
+          "32\"",
+          "34\"",
+          "36\"",
+          "38\"",
+          "40\"",
+          "42\""
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Inseam",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "inseam",
+        "values": [
+          "28\"",
+          "30\"",
+          "32\"",
+          "34\"",
+          "36\""
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Style",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "style",
+        "values": [
+          "Jeans",
+          "Chinos",
+          "Dress Pants",
+          "Joggers",
+          "Cargo",
+          "Shorts"
+        ]
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_womens_clothing",
+    "nodeId": "1040658",
+    "name": "Women's Clothing",
+    "slug": "womens-clothing",
+    "amazonPath": "Clothing, Shoes & Jewelry > Women",
+    "parentId": "cat_clothing",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?w=400&h=400&fit=crop",
+    "icon": "User",
+    "description": "Women's dresses, tops, pants, activewear and more.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 2,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "size",
+        "label": "Size",
+        "type": "checkbox",
+        "algoliaAttr": "sizes",
+        "disjunctive": true,
+        "values": [
+          "XS",
+          "S",
+          "M",
+          "L",
+          "XL",
+          "XXL",
+          "0",
+          "2",
+          "4",
+          "6",
+          "8",
+          "10",
+          "12",
+          "14",
+          "16"
+        ]
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Style",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "style",
+        "values": [
+          "Casual",
+          "Formal",
+          "Athletic",
+          "Bohemian",
+          "Business"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Material",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "material",
+        "values": [
+          "Cotton",
+          "Polyester",
+          "Silk",
+          "Linen",
+          "Rayon",
+          "Spandex"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "onSale",
+        "label": "On Sale",
+        "type": "boolean",
+        "algoliaAttr": "onSale",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_womens_dresses",
+    "nodeId": "1045024",
+    "name": "Dresses",
+    "slug": "womens-dresses",
+    "amazonPath": "Clothing, Shoes & Jewelry > Women > Dresses",
+    "parentId": "cat_womens_clothing",
+    "level": 2,
+    "image": "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400&h=400&fit=crop",
+    "icon": "Shirt",
+    "description": "Women's casual dresses, evening gowns, maxi dresses and more.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 1,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "size",
+        "label": "Size",
+        "type": "checkbox",
+        "algoliaAttr": "sizes",
+        "disjunctive": true
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Length",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "length",
+        "values": [
+          "Mini",
+          "Midi",
+          "Maxi",
+          "Knee Length",
+          "Floor Length"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Occasion",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "occasion",
+        "values": [
+          "Casual",
+          "Formal",
+          "Party",
+          "Wedding",
+          "Beach",
+          "Work"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Sleeve",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "sleeve",
+        "values": [
+          "Sleeveless",
+          "Short Sleeve",
+          "Long Sleeve",
+          "3/4 Sleeve"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_shoes",
+    "nodeId": "679255011",
     "name": "Shoes",
     "slug": "shoes",
-    "parentId": "cat_009",
+    "amazonPath": "Clothing, Shoes & Jewelry > Shoes",
+    "parentId": "cat_clothing",
     "level": 1,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop",
     "icon": "Footprints",
-    "description": "Formal, casual and sports shoes for men.",
-    "productCount": 60,
+    "description": "Men's and women's sneakers, boots, sandals, dress shoes and more.",
+    "productCount": 0,
     "isActive": true,
     "isFeatured": true,
-    "sortOrder": 2,
-    "filters": [
+    "sortOrder": 3,
+    "facets": [
       {
         "key": "brand",
         "label": "Brand",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Nike",
+          "Adidas",
+          "New Balance",
+          "Puma",
+          "Reebok",
+          "Vans",
+          "Converse",
+          "Timberland",
+          "UGG",
+          "Clarks"
+        ]
       },
       {
-        "key": "sizes",
+        "key": "size",
         "label": "Size",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "sizes",
+        "disjunctive": true,
+        "values": [
+          "5",
+          "5.5",
+          "6",
+          "6.5",
+          "7",
+          "7.5",
+          "8",
+          "8.5",
+          "9",
+          "9.5",
+          "10",
+          "10.5",
+          "11",
+          "12",
+          "13"
+        ]
       },
       {
         "key": "color",
         "label": "Color",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
       },
       {
-        "key": "material",
-        "label": "Material",
-        "type": "checkbox"
+        "key": "attrs",
+        "label": "Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "shoeType",
+        "values": [
+          "Sneakers",
+          "Running",
+          "Boots",
+          "Sandals",
+          "Loafers",
+          "Dress",
+          "Hiking",
+          "Slip-On"
+        ]
       },
       {
-        "key": "price",
+        "key": "attrs",
+        "label": "Width",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "width",
+        "values": [
+          "Narrow",
+          "Regular",
+          "Wide",
+          "Extra Wide"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Closure",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "closure",
+        "values": [
+          "Lace-Up",
+          "Slip-On",
+          "Velcro",
+          "Buckle",
+          "Zipper"
+        ]
+      },
+      {
+        "key": "minPrice",
         "label": "Price",
-        "type": "range"
-      }
-    ]
-  },
-  {
-    "id": "cat_012",
-    "name": "Home & Kitchen",
-    "slug": "home-kitchen",
-    "parentId": null,
-    "level": 0,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
-    "icon": "UtensilsCrossed",
-    "description": "Kitchen appliances and home essentials.",
-    "productCount": 35,
-    "isActive": true,
-    "isFeatured": true,
-    "sortOrder": 3,
-    "filters": [
-      {
-        "key": "brand",
-        "label": "Brand",
-        "type": "checkbox"
-      },
-      {
-        "key": "price",
-        "label": "Price",
-        "type": "range"
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
       },
       {
         "key": "rating",
         "label": "Rating",
-        "type": "rating"
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
       }
     ]
   },
   {
-    "id": "cat_013",
-    "name": "Beauty",
-    "slug": "beauty",
+    "id": "cat_home_kitchen",
+    "nodeId": "1063498",
+    "name": "Home & Kitchen",
+    "slug": "home-kitchen",
+    "amazonPath": "Home & Kitchen",
     "parentId": null,
     "level": 0,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
-    "icon": "Sparkles",
-    "description": "Skincare, makeup and beauty products.",
-    "productCount": 53,
+    "image": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=400&fit=crop",
+    "icon": "Home",
+    "description": "Furniture, bedding, kitchen appliances, cookware and home décor.",
+    "productCount": 0,
     "isActive": true,
     "isFeatured": true,
     "sortOrder": 4,
-    "filters": [
+    "facets": [
       {
         "key": "brand",
         "label": "Brand",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
       },
       {
-        "key": "skinType",
-        "label": "Skin Type",
-        "type": "checkbox"
-      },
-      {
-        "key": "price",
+        "key": "minPrice",
         "label": "Price",
-        "type": "range"
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "freeShipping",
+        "label": "Free Shipping",
+        "type": "boolean",
+        "algoliaAttr": "freeShipping",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
       }
     ]
   },
   {
-    "id": "cat_014",
-    "name": "Sports & Fitness",
-    "slug": "sports-fitness",
+    "id": "cat_kitchen_dining",
+    "nodeId": "284507",
+    "name": "Kitchen & Dining",
+    "slug": "kitchen-dining",
+    "amazonPath": "Home & Kitchen > Kitchen & Dining",
+    "parentId": "cat_home_kitchen",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=400&fit=crop",
+    "icon": "UtensilsCrossed",
+    "description": "Cookware, kitchen appliances, cutlery, dining sets and kitchen gadgets.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 1,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Instant Pot",
+          "KitchenAid",
+          "Cuisinart",
+          "Ninja",
+          "Lodge",
+          "All-Clad",
+          "OXO",
+          "Vitamix"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "itemType",
+        "values": [
+          "Cookware",
+          "Bakeware",
+          "Small Appliances",
+          "Cutlery",
+          "Dinnerware",
+          "Storage"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Material",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "material",
+        "values": [
+          "Stainless Steel",
+          "Cast Iron",
+          "Nonstick",
+          "Ceramic",
+          "Hard Anodized",
+          "Copper"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Capacity",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "capacity",
+        "values": [
+          "1Qt",
+          "2Qt",
+          "3Qt",
+          "5Qt",
+          "6Qt",
+          "8Qt",
+          "12Qt"
+        ]
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_bedding",
+    "nodeId": "3732961",
+    "name": "Bedding",
+    "slug": "bedding",
+    "amazonPath": "Home & Kitchen > Bedding",
+    "parentId": "cat_home_kitchen",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=400&h=400&fit=crop",
+    "icon": "Bed",
+    "description": "Sheets, comforters, pillows, mattress covers and bed accessories.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 2,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Bed Size",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "bedSize",
+        "values": [
+          "Twin",
+          "Twin XL",
+          "Full",
+          "Queen",
+          "King",
+          "California King"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Material",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "material",
+        "values": [
+          "100% Cotton",
+          "Egyptian Cotton",
+          "Bamboo",
+          "Microfiber",
+          "Linen",
+          "Sateen"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Thread Count",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "threadCount",
+        "values": [
+          "200",
+          "300",
+          "400",
+          "600",
+          "800",
+          "1000+"
+        ]
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_furniture",
+    "nodeId": "1057792",
+    "name": "Furniture",
+    "slug": "furniture",
+    "amazonPath": "Home & Kitchen > Furniture",
+    "parentId": "cat_home_kitchen",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=400&fit=crop",
+    "icon": "Sofa",
+    "description": "Living room, bedroom, office and outdoor furniture.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 3,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Room",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "room",
+        "values": [
+          "Living Room",
+          "Bedroom",
+          "Office",
+          "Outdoor",
+          "Dining Room",
+          "Kids"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Material",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "material",
+        "values": [
+          "Wood",
+          "Metal",
+          "Upholstered",
+          "Glass",
+          "Wicker",
+          "Plastic",
+          "Leather"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Style",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "style",
+        "values": [
+          "Modern",
+          "Traditional",
+          "Mid-Century",
+          "Industrial",
+          "Farmhouse",
+          "Scandinavian"
+        ]
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_sports",
+    "nodeId": "3375301",
+    "name": "Sports & Outdoors",
+    "slug": "sports-outdoors",
+    "amazonPath": "Sports & Outdoors",
     "parentId": null,
     "level": 0,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "image": "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=400&fit=crop",
     "icon": "Dumbbell",
-    "description": "Gym equipment, sports gear and fitness accessories.",
-    "productCount": 35,
+    "description": "Exercise equipment, outdoor gear, sports apparel and all sporting goods.",
+    "productCount": 0,
     "isActive": true,
     "isFeatured": true,
     "sortOrder": 5,
-    "filters": [
+    "facets": [
       {
         "key": "brand",
         "label": "Brand",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
       },
       {
-        "key": "targetMuscle",
-        "label": "Target Muscle",
-        "type": "checkbox"
-      },
-      {
-        "key": "difficulty",
-        "label": "Difficulty",
-        "type": "checkbox"
-      },
-      {
-        "key": "price",
+        "key": "minPrice",
         "label": "Price",
-        "type": "range"
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "freeShipping",
+        "label": "Free Shipping",
+        "type": "boolean",
+        "algoliaAttr": "freeShipping",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
       }
     ]
   },
   {
-    "id": "cat_015",
-    "name": "Books",
-    "slug": "books",
-    "parentId": null,
-    "level": 0,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
-    "icon": "BookOpen",
-    "description": "Tech books, self-help, fiction and more.",
-    "productCount": 40,
+    "id": "cat_exercise_fitness",
+    "nodeId": "3407731",
+    "name": "Exercise & Fitness",
+    "slug": "exercise-fitness",
+    "amazonPath": "Sports & Outdoors > Exercise & Fitness",
+    "parentId": "cat_sports",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=400&fit=crop",
+    "icon": "Dumbbell",
+    "description": "Gym equipment, yoga mats, resistance bands, weights and cardio machines.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 1,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Bowflex",
+          "NordicTrack",
+          "Peloton",
+          "Rogue",
+          "CAP",
+          "Lifeline",
+          "TRX",
+          "Gaiam"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Equipment Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "equipmentType",
+        "values": [
+          "Treadmill",
+          "Stationary Bike",
+          "Dumbbells",
+          "Barbells",
+          "Resistance Bands",
+          "Yoga Mat",
+          "Pull-up Bar",
+          "Kettlebell"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Weight",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "weight",
+        "values": [
+          "5 lbs",
+          "10 lbs",
+          "15 lbs",
+          "20 lbs",
+          "25 lbs",
+          "30 lbs",
+          "35 lbs",
+          "50 lbs"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Fitness Level",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "fitnessLevel",
+        "values": [
+          "Beginner",
+          "Intermediate",
+          "Advanced"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_outdoor_recreation",
+    "nodeId": "706814011",
+    "name": "Outdoor Recreation",
+    "slug": "outdoor-recreation",
+    "amazonPath": "Sports & Outdoors > Outdoor Recreation",
+    "parentId": "cat_sports",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&h=400&fit=crop",
+    "icon": "Tent",
+    "description": "Camping, hiking, cycling, climbing and all outdoor adventure gear.",
+    "productCount": 0,
     "isActive": true,
     "isFeatured": false,
-    "sortOrder": 6,
-    "filters": [
+    "sortOrder": 2,
+    "facets": [
       {
-        "key": "author",
-        "label": "Author",
-        "type": "checkbox"
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "REI",
+          "Columbia",
+          "The North Face",
+          "Patagonia",
+          "Black Diamond",
+          "MSR",
+          "Osprey",
+          "Hydro Flask"
+        ]
       },
       {
-        "key": "format",
-        "label": "Format",
-        "type": "checkbox"
+        "key": "attrs",
+        "label": "Activity",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "activity",
+        "values": [
+          "Camping",
+          "Hiking",
+          "Climbing",
+          "Cycling",
+          "Water Sports",
+          "Winter Sports",
+          "Running"
+        ]
       },
       {
-        "key": "price",
+        "key": "attrs",
+        "label": "Season",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "season",
+        "values": [
+          "3-Season",
+          "4-Season",
+          "Summer",
+          "Winter"
+        ]
+      },
+      {
+        "key": "minPrice",
         "label": "Price",
-        "type": "range"
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
       }
     ]
   },
   {
-    "id": "cat_016",
-    "name": "Accessories",
-    "slug": "accessories",
+    "id": "cat_beauty",
+    "nodeId": "11055981",
+    "name": "Beauty & Personal Care",
+    "slug": "beauty-personal-care",
+    "amazonPath": "Beauty & Personal Care",
     "parentId": null,
     "level": 0,
-    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
-    "icon": "Watch",
-    "description": "Bags, watches and fashion accessories.",
-    "productCount": 42,
+    "image": "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=400&h=400&fit=crop",
+    "icon": "Sparkles",
+    "description": "Skincare, haircare, makeup, fragrance and personal care products.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 6,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "freeShipping",
+        "label": "Free Shipping",
+        "type": "boolean",
+        "algoliaAttr": "freeShipping",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_skincare",
+    "nodeId": "11060451",
+    "name": "Skin Care",
+    "slug": "skin-care",
+    "amazonPath": "Beauty & Personal Care > Skin Care",
+    "parentId": "cat_beauty",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&h=400&fit=crop",
+    "icon": "Droplets",
+    "description": "Moisturizers, serums, cleansers, sunscreens and face masks.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 1,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "CeraVe",
+          "Neutrogena",
+          "La Roche-Posay",
+          "The Ordinary",
+          "Paula's Choice",
+          "Cetaphil",
+          "Olay",
+          "Drunk Elephant"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Skin Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "skinType",
+        "values": [
+          "All Skin Types",
+          "Oily",
+          "Dry",
+          "Combination",
+          "Sensitive",
+          "Normal",
+          "Acne-Prone"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Product Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "productType",
+        "values": [
+          "Moisturizer",
+          "Serum",
+          "Cleanser",
+          "Toner",
+          "Sunscreen",
+          "Eye Cream",
+          "Face Mask",
+          "Exfoliant"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Skin Concern",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "skinConcern",
+        "values": [
+          "Anti-Aging",
+          "Acne",
+          "Brightening",
+          "Hydration",
+          "Dark Spots",
+          "Pores",
+          "Redness"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "SPF",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "spf",
+        "values": [
+          "No SPF",
+          "SPF 15",
+          "SPF 30",
+          "SPF 50",
+          "SPF 50+"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Formulation",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "formulation",
+        "values": [
+          "Cream",
+          "Gel",
+          "Lotion",
+          "Oil",
+          "Serum",
+          "Foam",
+          "Balm",
+          "Mist"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_haircare",
+    "nodeId": "11060711",
+    "name": "Hair Care",
+    "slug": "hair-care",
+    "amazonPath": "Beauty & Personal Care > Hair Care",
+    "parentId": "cat_beauty",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1519069190791-0b40a2d701f5?w=400&h=400&fit=crop",
+    "icon": "Wind",
+    "description": "Shampoos, conditioners, hair treatments, styling tools and hair accessories.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 2,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Pantene",
+          "Head & Shoulders",
+          "Dove",
+          "Olaplex",
+          "Moroccanoil",
+          "Redken",
+          "Dyson",
+          "ghd"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Hair Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "hairType",
+        "values": [
+          "All Hair Types",
+          "Fine",
+          "Thick",
+          "Curly",
+          "Straight",
+          "Wavy",
+          "Color-Treated",
+          "Damaged"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Product",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "productType",
+        "values": [
+          "Shampoo",
+          "Conditioner",
+          "Hair Mask",
+          "Styling Cream",
+          "Serum",
+          "Dry Shampoo",
+          "Hair Spray",
+          "Hair Dryer",
+          "Straightener",
+          "Curler"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Hair Concern",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "hairConcern",
+        "values": [
+          "Dandruff",
+          "Frizz",
+          "Damage Repair",
+          "Volume",
+          "Moisture",
+          "Color Protection",
+          "Growth"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_makeup",
+    "nodeId": "11060571",
+    "name": "Makeup",
+    "slug": "makeup",
+    "amazonPath": "Beauty & Personal Care > Makeup",
+    "parentId": "cat_beauty",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=400&h=400&fit=crop",
+    "icon": "Palette",
+    "description": "Foundation, lipstick, mascara, eyeshadow and all makeup products.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 3,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Maybelline",
+          "L'Oréal",
+          "NYX",
+          "MAC",
+          "Urban Decay",
+          "NARS",
+          "Charlotte Tilbury",
+          "e.l.f.",
+          "Fenty Beauty"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Makeup Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "makeupType",
+        "values": [
+          "Foundation",
+          "Concealer",
+          "Mascara",
+          "Eyeliner",
+          "Lipstick",
+          "Lip Gloss",
+          "Eyeshadow",
+          "Blush",
+          "Highlighter",
+          "Primer",
+          "Setting Spray"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Coverage",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "coverage",
+        "values": [
+          "Light",
+          "Medium",
+          "Full",
+          "Buildable"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Finish",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "finish",
+        "values": [
+          "Matte",
+          "Dewy",
+          "Natural",
+          "Satin",
+          "Luminous",
+          "Glitter"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Features",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "features",
+        "values": [
+          "Vegan",
+          "Cruelty-Free",
+          "Waterproof",
+          "Long-Lasting",
+          "SPF",
+          "Buildable"
+        ]
+      },
+      {
+        "key": "color",
+        "label": "Shade",
+        "type": "checkbox",
+        "algoliaAttr": "colors",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_toys_games",
+    "nodeId": "165795011",
+    "name": "Toys & Games",
+    "slug": "toys-games",
+    "amazonPath": "Toys & Games",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1558877385-81a1c7e67d72?w=400&h=400&fit=crop",
+    "icon": "Gamepad2",
+    "description": "Toys for all ages — action figures, board games, building sets, dolls and educational toys.",
+    "productCount": 0,
     "isActive": true,
     "isFeatured": true,
     "sortOrder": 7,
-    "filters": [
+    "facets": [
       {
         "key": "brand",
         "label": "Brand",
-        "type": "checkbox"
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "LEGO",
+          "Hasbro",
+          "Mattel",
+          "Fisher-Price",
+          "Hot Wheels",
+          "Barbie",
+          "Nerf",
+          "Melissa & Doug"
+        ]
       },
       {
-        "key": "material",
-        "label": "Material",
-        "type": "checkbox"
+        "key": "attrs",
+        "label": "Age Range",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "ageRange",
+        "values": [
+          "0-2 years",
+          "3-5 years",
+          "6-8 years",
+          "9-12 years",
+          "Teen",
+          "Adult",
+          "All Ages"
+        ]
       },
       {
-        "key": "price",
+        "key": "attrs",
+        "label": "Toy Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "toyType",
+        "values": [
+          "Action Figures",
+          "Board Games",
+          "Building Sets",
+          "Dolls",
+          "Remote Control",
+          "Educational",
+          "Arts & Crafts",
+          "Outdoor"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Players",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "players",
+        "values": [
+          "1 Player",
+          "2 Players",
+          "2-4 Players",
+          "4+ Players",
+          "Party"
+        ]
+      },
+      {
+        "key": "minPrice",
         "label": "Price",
-        "type": "range"
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_building_sets",
+    "nodeId": "166047011",
+    "name": "Building Sets & Blocks",
+    "slug": "building-sets-blocks",
+    "amazonPath": "Toys & Games > Building Sets & Blocks",
+    "parentId": "cat_toys_games",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=400&h=400&fit=crop",
+    "icon": "Blocks",
+    "description": "LEGO, building blocks, magnetic tiles and construction sets.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": true,
+    "sortOrder": 1,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "LEGO",
+          "Mega Bloks",
+          "Magnetic Tiles",
+          "KNex",
+          "Playmobil"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Age Range",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "ageRange",
+        "values": [
+          "3-5 years",
+          "6-8 years",
+          "9-12 years",
+          "Teen",
+          "Adult"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Piece Count",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "pieces",
+        "values": [
+          "Under 100",
+          "100-500",
+          "500-1000",
+          "1000-2000",
+          "2000+"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Theme",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "theme",
+        "values": [
+          "City",
+          "Technic",
+          "Star Wars",
+          "Marvel",
+          "Harry Potter",
+          "Speed Champions",
+          "Architecture",
+          "Creator"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_board_games",
+    "nodeId": "166221011",
+    "name": "Board Games",
+    "slug": "board-games",
+    "amazonPath": "Toys & Games > Games & Accessories > Board Games",
+    "parentId": "cat_toys_games",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?w=400&h=400&fit=crop",
+    "icon": "Puzzle",
+    "description": "Classic and modern board games, card games and strategy games.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 2,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Hasbro",
+          "Mattel",
+          "Ravensburger",
+          "CATAN",
+          "Exploding Kittens"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Age Range",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "ageRange",
+        "values": [
+          "3-5 years",
+          "6-8 years",
+          "8-12 years",
+          "Teen",
+          "Adult",
+          "Family"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Players",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "players",
+        "values": [
+          "2 Players",
+          "2-4 Players",
+          "2-6 Players",
+          "4+ Players",
+          "6+ Players"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Duration",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "duration",
+        "values": [
+          "15 min",
+          "30 min",
+          "1 hour",
+          "2+ hours"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Genre",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "genre",
+        "values": [
+          "Strategy",
+          "Party",
+          "Family",
+          "Cooperative",
+          "Trivia",
+          "Word",
+          "Roleplaying"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_grocery",
+    "nodeId": "16310211",
+    "name": "Grocery & Gourmet Food",
+    "slug": "grocery-gourmet-food",
+    "amazonPath": "Grocery & Gourmet Food",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop",
+    "icon": "ShoppingBasket",
+    "description": "Groceries, pantry staples, snacks, beverages and gourmet specialty foods.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 8,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Diet Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "dietType",
+        "values": [
+          "Gluten-Free",
+          "Organic",
+          "Keto",
+          "Vegan",
+          "Kosher",
+          "Halal",
+          "Non-GMO",
+          "Paleo"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Food Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "foodType",
+        "values": [
+          "Snacks",
+          "Beverages",
+          "Pantry",
+          "Candy",
+          "Coffee & Tea",
+          "Condiments",
+          "Breakfast",
+          "Baking"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_candy_snacks",
+    "nodeId": "6558923011",
+    "name": "Candy & Snacks",
+    "slug": "candy-snacks",
+    "amazonPath": "Grocery & Gourmet Food > Candy & Chocolate",
+    "parentId": "cat_grocery",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop",
+    "icon": "Candy",
+    "description": "Chocolate bars, candy, chips, cookies, nuts and all snack foods.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 1,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Hershey's",
+          "Mars",
+          "Lindt",
+          "Toblerone",
+          "Ghirardelli",
+          "Ferrero",
+          "Cadbury",
+          "Tony's Chocolonely"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Chocolate Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "chocolateType",
+        "values": [
+          "Dark",
+          "Milk",
+          "White",
+          "Semi-Sweet"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Diet Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "dietType",
+        "values": [
+          "Gluten-Free",
+          "Vegan",
+          "Kosher",
+          "Organic",
+          "Keto",
+          "Halal",
+          "Non-GMO",
+          "Sugar-Free"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Flavor",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "flavor",
+        "values": [
+          "Caramel",
+          "Peanut Butter",
+          "Almond",
+          "Hazelnut",
+          "Mint",
+          "Coconut",
+          "Sea Salt",
+          "Plain"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Size",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "size",
+        "values": [
+          "Fun Size",
+          "Snack Size",
+          "Full Size",
+          "King Size",
+          "Bulk/Value Pack"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Occasion",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "occasion",
+        "values": [
+          "Valentine's Day",
+          "Halloween",
+          "Christmas",
+          "Easter",
+          "Birthday",
+          "Everyday"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_health",
+    "nodeId": "3760931",
+    "name": "Health & Personal Care",
+    "slug": "health-personal-care",
+    "amazonPath": "Health & Personal Care",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=400&h=400&fit=crop",
+    "icon": "Heart",
+    "description": "Vitamins, supplements, medical supplies, personal care and health monitoring.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 9,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "freeShipping",
+        "label": "Free Shipping",
+        "type": "boolean",
+        "algoliaAttr": "freeShipping",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_vitamins",
+    "nodeId": "3764441",
+    "name": "Vitamins & Supplements",
+    "slug": "vitamins-supplements",
+    "amazonPath": "Health & Personal Care > Vitamins & Supplements",
+    "parentId": "cat_health",
+    "level": 1,
+    "image": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&h=400&fit=crop",
+    "icon": "Pill",
+    "description": "Vitamins, minerals, protein powders, fish oil and dietary supplements.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 1,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Nature Made",
+          "Garden of Life",
+          "Optimum Nutrition",
+          "NOW Foods",
+          "Centrum",
+          "One A Day",
+          "Kirkland",
+          "Thorne"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "supplementType",
+        "values": [
+          "Multivitamin",
+          "Vitamin C",
+          "Vitamin D",
+          "B12",
+          "Magnesium",
+          "Omega-3",
+          "Protein Powder",
+          "Probiotic",
+          "Collagen",
+          "Melatonin",
+          "Zinc",
+          "Iron"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Form",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "form",
+        "values": [
+          "Capsule",
+          "Tablet",
+          "Gummy",
+          "Powder",
+          "Liquid",
+          "Softgel"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Count",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "servingSize",
+        "values": [
+          "30 count",
+          "60 count",
+          "90 count",
+          "120 count",
+          "180 count",
+          "250 count",
+          "365 count"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Features",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "features",
+        "values": [
+          "Non-GMO",
+          "Gluten-Free",
+          "Vegan",
+          "No Artificial Colors",
+          "Third-Party Tested",
+          "USP Verified"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_pet_supplies",
+    "nodeId": "2619534011",
+    "name": "Pet Supplies",
+    "slug": "pet-supplies",
+    "amazonPath": "Pet Supplies",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=400&h=400&fit=crop",
+    "icon": "PawPrint",
+    "description": "Everything for your pets — food, treats, toys, accessories and health products.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 10,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Purina",
+          "Royal Canin",
+          "Hill's Science Diet",
+          "Blue Buffalo",
+          "Taste of the Wild",
+          "Wellness",
+          "KONG",
+          "Frisco"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Pet Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "petType",
+        "values": [
+          "Dog",
+          "Cat",
+          "Fish",
+          "Bird",
+          "Small Animal",
+          "Reptile",
+          "Horse"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Category",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "petCategory",
+        "values": [
+          "Food",
+          "Treats",
+          "Toys",
+          "Beds",
+          "Grooming",
+          "Health",
+          "Collars & Leashes",
+          "Carriers"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Life Stage",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "lifeStage",
+        "values": [
+          "Puppy/Kitten",
+          "Adult",
+          "Senior",
+          "All Life Stages"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Dog Size",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "dogSize",
+        "values": [
+          "Toy (under 10 lbs)",
+          "Small (10-25 lbs)",
+          "Medium (25-50 lbs)",
+          "Large (50-90 lbs)",
+          "Giant (90+ lbs)"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_books",
+    "nodeId": "1000",
+    "name": "Books",
+    "slug": "books",
+    "amazonPath": "Books",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=400&fit=crop",
+    "icon": "BookOpen",
+    "description": "Fiction, non-fiction, textbooks, children's books and all genres.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 11,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Publisher",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Genre",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "genre",
+        "values": [
+          "Fiction",
+          "Non-Fiction",
+          "Mystery",
+          "Science Fiction",
+          "Fantasy",
+          "Romance",
+          "Biography",
+          "Self-Help",
+          "History",
+          "Children's",
+          "Textbook",
+          "Business",
+          "Cookbook"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Format",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "format",
+        "values": [
+          "Hardcover",
+          "Paperback",
+          "Mass Market Paperback",
+          "Board Book",
+          "Spiral-Bound"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Language",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "language",
+        "values": [
+          "English",
+          "Spanish",
+          "French",
+          "German",
+          "Chinese",
+          "Japanese",
+          "Portuguese"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Age Group",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "ageGroup",
+        "values": [
+          "Children",
+          "Young Adult",
+          "Adult"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_office_products",
+    "nodeId": "1084128",
+    "name": "Office Products",
+    "slug": "office-products",
+    "amazonPath": "Office Products",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=400&fit=crop",
+    "icon": "Briefcase",
+    "description": "Office supplies, printers, paper, pens, furniture and business products.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 12,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "HP",
+          "Canon",
+          "Epson",
+          "Brother",
+          "Post-it",
+          "Sharpie",
+          "Staples",
+          "AmazonBasics"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Category",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "officeCategory",
+        "values": [
+          "Printers",
+          "Paper",
+          "Pens & Markers",
+          "Notebooks",
+          "Folders",
+          "Shredders",
+          "Laminators",
+          "Calculators",
+          "Desk Accessories",
+          "Labels"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Color",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "color",
+        "values": [
+          "Black",
+          "Blue",
+          "Red",
+          "Multi-color",
+          "Assorted"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_tools",
+    "nodeId": "468240",
+    "name": "Tools & Home Improvement",
+    "slug": "tools-home-improvement",
+    "amazonPath": "Tools & Home Improvement",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400&h=400&fit=crop",
+    "icon": "Wrench",
+    "description": "Power tools, hand tools, hardware, electrical and home improvement supplies.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 13,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "DeWalt",
+          "Milwaukee",
+          "Makita",
+          "Bosch",
+          "Stanley",
+          "Black+Decker",
+          "Ryobi",
+          "Craftsman",
+          "Klein Tools"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Category",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "toolCategory",
+        "values": [
+          "Power Tools",
+          "Hand Tools",
+          "Electrical",
+          "Plumbing",
+          "Paint",
+          "Hardware",
+          "Safety",
+          "Ladders",
+          "Storage"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Power Source",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "powerSource",
+        "values": [
+          "Corded Electric",
+          "Cordless Battery",
+          "Pneumatic",
+          "Manual",
+          "Gas"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Voltage",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "voltage",
+        "values": [
+          "12V",
+          "18V",
+          "20V",
+          "24V",
+          "60V",
+          "N/A"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_automotive",
+    "nodeId": "15690151",
+    "name": "Automotive",
+    "slug": "automotive",
+    "amazonPath": "Automotive",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&h=400&fit=crop",
+    "icon": "Car",
+    "description": "Car parts, accessories, tools, electronics and maintenance products.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 14,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Bosch",
+          "Meguiar's",
+          "Chemical Guys",
+          "3M",
+          "Armor All",
+          "Michelin",
+          "WeatherTech",
+          "Garmin"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Category",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "autoCategory",
+        "values": [
+          "Car Care",
+          "Interior Accessories",
+          "Exterior Accessories",
+          "Electronics",
+          "Tools",
+          "Replacement Parts",
+          "Tires & Wheels",
+          "Oils & Fluids"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Vehicle Type",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "vehicleType",
+        "values": [
+          "Car",
+          "Truck",
+          "SUV",
+          "Motorcycle",
+          "RV",
+          "Universal"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_baby",
+    "nodeId": "165797011",
+    "name": "Baby",
+    "slug": "baby",
+    "amazonPath": "Baby",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=400&h=400&fit=crop",
+    "icon": "Baby",
+    "description": "Baby gear, clothing, feeding, diapers and nursery products.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 15,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Pampers",
+          "Huggies",
+          "Graco",
+          "Chicco",
+          "Uppababy",
+          "Ergobaby",
+          "Britax",
+          "Burt's Bees Baby"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Age Range",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "ageRange",
+        "values": [
+          "Newborn",
+          "0-3 months",
+          "3-6 months",
+          "6-12 months",
+          "1-2 years",
+          "2-4 years"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Category",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "babyCategory",
+        "values": [
+          "Strollers",
+          "Car Seats",
+          "Diapers",
+          "Feeding",
+          "Clothing",
+          "Nursery",
+          "Toys",
+          "Baby Monitors",
+          "Carriers"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Material",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "material",
+        "values": [
+          "Organic Cotton",
+          "BPA-Free",
+          "Non-Toxic",
+          "Hypoallergenic"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Gender",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "gender",
+        "values": [
+          "Boys",
+          "Girls",
+          "Unisex"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_video_games",
+    "nodeId": "11846801",
+    "name": "Video Games",
+    "slug": "video-games",
+    "amazonPath": "Video Games",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1593305841991-05c297ba4575?w=400&h=400&fit=crop",
+    "icon": "Gamepad",
+    "description": "Video games, consoles, controllers and gaming accessories.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 16,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Sony",
+          "Microsoft",
+          "Nintendo",
+          "EA",
+          "Activision",
+          "Ubisoft",
+          "Rockstar",
+          "2K Games"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Platform",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "platform",
+        "values": [
+          "PlayStation 5",
+          "PlayStation 4",
+          "Xbox Series X/S",
+          "Xbox One",
+          "Nintendo Switch",
+          "PC",
+          "Meta Quest"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Genre",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "genre",
+        "values": [
+          "Action",
+          "Adventure",
+          "RPG",
+          "Sports",
+          "Racing",
+          "Strategy",
+          "Shooter",
+          "Simulation",
+          "Fighting",
+          "Horror",
+          "Puzzle"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "ESRB Rating",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "esrbRating",
+        "values": [
+          "E (Everyone)",
+          "E10+",
+          "T (Teen)",
+          "M (Mature)",
+          "AO (Adults Only)"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Players",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "multiplayer",
+        "values": [
+          "Single Player",
+          "Local Multiplayer",
+          "Online Multiplayer",
+          "Co-op"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      },
+      {
+        "key": "inStock",
+        "label": "In Stock",
+        "type": "boolean",
+        "algoliaAttr": "inStock",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_musical_instruments",
+    "nodeId": "11965861",
+    "name": "Musical Instruments",
+    "slug": "musical-instruments",
+    "amazonPath": "Musical Instruments",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=400&fit=crop",
+    "icon": "Music",
+    "description": "Guitars, keyboards, drums, microphones and all musical instruments.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 17,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Fender",
+          "Gibson",
+          "Yamaha",
+          "Roland",
+          "Casio",
+          "Shure",
+          "Audio-Technica",
+          "Pearl",
+          "Ludwig"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Instrument",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "instrumentType",
+        "values": [
+          "Guitar",
+          "Bass",
+          "Piano/Keyboard",
+          "Drums",
+          "Violin",
+          "Trumpet",
+          "Saxophone",
+          "Ukulele",
+          "Microphone",
+          "DJ Equipment"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Skill Level",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "skillLevel",
+        "values": [
+          "Beginner",
+          "Intermediate",
+          "Advanced",
+          "Professional"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_arts_crafts",
+    "nodeId": "2617942011",
+    "name": "Arts, Crafts & Sewing",
+    "slug": "arts-crafts-sewing",
+    "amazonPath": "Arts, Crafts & Sewing",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400&h=400&fit=crop",
+    "icon": "Palette",
+    "description": "Art supplies, craft materials, sewing, knitting and DIY project tools.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 18,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Category",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "craftCategory",
+        "values": [
+          "Drawing & Illustration",
+          "Painting",
+          "Sewing",
+          "Knitting & Crochet",
+          "Scrapbooking",
+          "Jewelry Making",
+          "Model Building",
+          "Calligraphy",
+          "Origami"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Skill Level",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "skillLevel",
+        "values": [
+          "Beginner",
+          "Intermediate",
+          "Advanced",
+          "All Levels"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_patio_garden",
+    "nodeId": "3238155011",
+    "name": "Patio, Lawn & Garden",
+    "slug": "patio-lawn-garden",
+    "amazonPath": "Patio, Lawn & Garden",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=400&fit=crop",
+    "icon": "Flower2",
+    "description": "Outdoor furniture, grills, garden tools, plants and lawn care.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 19,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true,
+        "values": [
+          "Weber",
+          "Traeger",
+          "Scotts",
+          "Miracle-Gro",
+          "Husqvarna",
+          "Greenworks",
+          "Sun Joe",
+          "Hampton Bay"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Category",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "gardenCategory",
+        "values": [
+          "Grills & Outdoor Cooking",
+          "Patio Furniture",
+          "Garden Tools",
+          "Lawn Mowers",
+          "Plants & Seeds",
+          "Planters",
+          "Lighting",
+          "Watering"
+        ]
+      },
+      {
+        "key": "attrs",
+        "label": "Material",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "material",
+        "values": [
+          "Steel",
+          "Aluminum",
+          "Wicker",
+          "Wood",
+          "Teak",
+          "Plastic",
+          "Resin"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
+      }
+    ]
+  },
+  {
+    "id": "cat_industrial",
+    "nodeId": "16310161",
+    "name": "Industrial & Scientific",
+    "slug": "industrial-scientific",
+    "amazonPath": "Industrial & Scientific",
+    "parentId": null,
+    "level": 0,
+    "image": "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=400&h=400&fit=crop",
+    "icon": "Factory",
+    "description": "Industrial equipment, lab supplies, safety gear and scientific instruments.",
+    "productCount": 0,
+    "isActive": true,
+    "isFeatured": false,
+    "sortOrder": 20,
+    "facets": [
+      {
+        "key": "brand",
+        "label": "Brand",
+        "type": "checkbox",
+        "algoliaAttr": "brand",
+        "disjunctive": true
+      },
+      {
+        "key": "attrs",
+        "label": "Category",
+        "type": "checkbox",
+        "algoliaAttr": "attrValues",
+        "disjunctive": true,
+        "attrKey": "industrialCategory",
+        "values": [
+          "Safety & Security",
+          "Lab Supplies",
+          "HVAC",
+          "Electrical",
+          "Material Handling",
+          "Janitorial",
+          "Test & Measurement",
+          "Manufacturing"
+        ]
+      },
+      {
+        "key": "minPrice",
+        "label": "Price",
+        "type": "range",
+        "algoliaAttr": "price",
+        "disjunctive": false
+      },
+      {
+        "key": "rating",
+        "label": "Rating",
+        "type": "rating",
+        "algoliaAttr": "avgRating",
+        "disjunctive": false
+      },
+      {
+        "key": "isPrime",
+        "label": "Prime",
+        "type": "boolean",
+        "algoliaAttr": "isPrime",
+        "disjunctive": false
       }
     ]
   }

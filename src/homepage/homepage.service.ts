@@ -17,11 +17,6 @@ export class HomepageService implements OnModuleInit {
     private readonly categoriesService: CategoriesService,
   ) {}
 
-  // PERF-03: subscribe to the homepage:invalidate channel so that when any
-  // pod (including this one) publishes an invalidation signal, every pod
-  // clears its local in-process cache entries. Without this, admin updates
-  // on one pod clear that pod's cache but the other N-1 pods continue
-  // serving stale homepage data until their node-cache TTL expires (5 min).
   async onModuleInit() {
     this.redis.subscribe('homepage:invalidate', () => {
       this.cache.del('homepage:main')
@@ -29,27 +24,47 @@ export class HomepageService implements OnModuleInit {
     })
   }
 
+  // ── Mini product shape returned in homepage sections ─────────────────────────
   private mini(p: any) {
     return {
-      id: p.id,
-      slug: p.slug,
-      title: p.title,
-      brand: p.brand,
-      media: p.media,
-      pricing: p.pricing,
-      ratings: p.ratings,
-      onSale: p.onSale,
-      newArrival: p.newArrival,
-      featured: p.featured,
-      bestSeller: p.bestSeller,
-      trending: p.trending,
+      id:          p.id,
+      slug:        p.slug,
+      asin:        p.asin        ?? null,
+      title:       p.title,
+      brand:       p.brand,
+      // New schema: media.mainImage is the primary image
+      image:       p.media?.mainImage ?? p.media?.images?.[0]?.url ?? '',
+      media:       p.media,
+      // New schema: flat price + nested pricing both available
+      price:       p.price       ?? p.pricing?.current          ?? null,
+      original:    p.pricing?.original                          ?? null,
+      discount:    p.discountPercent ?? p.pricing?.discountPercent ?? 0,
+      currency:    p.pricing?.currency                          ?? 'USD',
+      pricing:     p.pricing,
+      // New schema: flat avgRating + nested ratings both available
+      rating:      p.avgRating   ?? p.ratings?.average          ?? null,
+      reviews:     p.ratings?.total ?? p.ratings?.count         ?? 0,
+      ratings:     p.ratings,
+      // Badge flags
+      isPrime:     p.isPrime     ?? false,
+      inStock:     p.inStock     ?? false,
+      freeShipping:p.freeShipping ?? false,
+      onSale:      p.onSale      ?? false,
+      newArrival:  p.newArrival  ?? false,
+      featured:    p.featured    ?? false,
+      bestSeller:  p.bestSeller  ?? false,
+      trending:    p.trending    ?? false,
+      topRated:    p.topRated    ?? false,
+      badges:      p.badges      ?? null,
+      recentSales: p.badges?.recentSales ?? null,
+      category:    p.category,
+      subcategory: p.subcategory,
     }
   }
 
   async invalidate() {
     this.cache.del('homepage:main')
     this.cache.del('homepage:banners')
-    // PERF-03: notify all other pods to clear their caches too
     await this.redis.publish('homepage:invalidate', Date.now().toString())
   }
 
@@ -57,59 +72,83 @@ export class HomepageService implements OnModuleInit {
     const cached = this.cache.get<any>('homepage:main')
     if (cached) return { data: cached, cacheHit: true }
 
-    const active = this.productsService.products.filter((p) => p.isActive)
+    const active     = this.productsService.products.filter((p) => (p as any).isActive)
     const categories = this.categoriesService.categories
-    const now = new Date()
-    const banners = await this.bannerModel.find({ isActive: true }).lean()
+    const now        = new Date()
+    const banners    = await this.bannerModel.find({ isActive: true }).lean()
 
     const heroBanners = banners
       .filter((b: any) => b.position === 'hero' && new Date(b.endDate) > now)
       .sort((a: any, b: any) => a.sortOrder - b.sortOrder)
+
     const promotionalBanners = banners
       .filter((b: any) => b.position !== 'hero' && new Date(b.endDate) > now)
       .sort((a: any, b: any) => a.sortOrder - b.sortOrder)
+
     const featuredCategories = categories
       .filter((c: any) => c.isFeatured && c.level === 0)
       .slice(0, 8)
 
-    const flashDeals: any[] = [],
-      newArrivals: any[] = [],
-      bestsellers: any[] = []
-    const trendingProducts: any[] = [],
-      topRated: any[] = [],
-      featuredProducts: any[] = []
+    const flashDeals:        any[] = []
+    const newArrivals:       any[] = []
+    const bestsellers:       any[] = []
+    const trendingProducts:  any[] = []
+    const topRated:          any[] = []
+    const featuredProducts:  any[] = []
 
     for (const p of active) {
-      if (p.onSale && p.pricing.discountPercent >= 20) flashDeals.push(p)
-      if (p.newArrival) newArrivals.push(p)
-      if (p.bestSeller) bestsellers.push(p)
-      if (p.trending) trendingProducts.push(p)
-      if (p.topRated) topRated.push(p)
-      if (p.featured) featuredProducts.push(p)
+      const pa = p as any
+      // FIX: parentheses around ?? so it doesn't mix with &&
+      if (pa.onSale && (pa.discountPercent ?? pa.pricing?.discountPercent ?? 0) >= 20)
+        flashDeals.push(pa)
+      if (pa.newArrival)   newArrivals.push(pa)
+      if (pa.bestSeller)   bestsellers.push(pa)
+      if (pa.trending)     trendingProducts.push(pa)
+      if (pa.topRated)     topRated.push(pa)
+      if (pa.featured)     featuredProducts.push(pa)
     }
 
-    flashDeals.sort((a, b) => b.pricing.discountPercent - a.pricing.discountPercent)
-    newArrivals.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    bestsellers.sort((a, b) => (b.inventory?.sold ?? 0) - (a.inventory?.sold ?? 0))
-    topRated.sort((a, b) => b.ratings.average - a.ratings.average)
-    featuredProducts.sort((a, b) => b.ratings.average - a.ratings.average)
+    // FIX: parentheses around ?? in sort comparisons to avoid TS operator precedence errors
+    flashDeals.sort(
+      (a, b) =>
+        (b.discountPercent ?? b.pricing?.discountPercent ?? 0) -
+        (a.discountPercent ?? a.pricing?.discountPercent ?? 0),
+    )
+    newArrivals.sort(
+      (a, b) => (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0),
+    )
+    bestsellers.sort(
+      (a, b) => (b.soldCount ?? b.inventory?.sold ?? 0) - (a.soldCount ?? a.inventory?.sold ?? 0),
+    )
+    topRated.sort(
+      (a, b) => (b.avgRating ?? b.ratings?.average ?? 0) - (a.avgRating ?? a.ratings?.average ?? 0),
+    )
+    featuredProducts.sort(
+      (a, b) => (b.avgRating ?? b.ratings?.average ?? 0) - (a.avgRating ?? a.ratings?.average ?? 0),
+    )
+    trendingProducts.sort(
+      (a, b) => (b.soldCount ?? b.inventory?.sold ?? 0) - (a.soldCount ?? a.inventory?.sold ?? 0),
+    )
 
+    // Build brand map
     const brandMap: Record<string, any> = {}
     for (const p of active) {
-      const slug = p.brand.toLowerCase().replace(/[^a-z0-9]/g, '-')
-      if (!brandMap[slug]) brandMap[slug] = { name: p.brand, slug, count: 0 }
-      brandMap[slug].count++
+      const pa = p as any
+      if (!pa.brand) continue
+      const s = pa.brand.toLowerCase().replace(/[^a-z0-9]/g, '-')
+      if (!brandMap[s]) brandMap[s] = { name: pa.brand, slug: s, count: 0 }
+      brandMap[s].count++
     }
 
     const data = {
       heroBanners,
       featuredCategories,
-      flashDeals: flashDeals.slice(0, 8).map(this.mini),
-      newArrivals: newArrivals.slice(0, 8).map(this.mini),
-      bestsellers: bestsellers.slice(0, 8).map(this.mini),
-      trendingProducts: trendingProducts.slice(0, 8).map(this.mini),
-      topRated: topRated.slice(0, 8).map(this.mini),
-      featuredProducts: featuredProducts.slice(0, 8).map(this.mini),
+      flashDeals:       flashDeals.slice(0, 8).map(this.mini.bind(this)),
+      newArrivals:      newArrivals.slice(0, 8).map(this.mini.bind(this)),
+      bestsellers:      bestsellers.slice(0, 8).map(this.mini.bind(this)),
+      trendingProducts: trendingProducts.slice(0, 8).map(this.mini.bind(this)),
+      topRated:         topRated.slice(0, 8).map(this.mini.bind(this)),
+      featuredProducts: featuredProducts.slice(0, 8).map(this.mini.bind(this)),
       brands: Object.values(brandMap)
         .sort((a, b) => b.count - a.count)
         .slice(0, 16),

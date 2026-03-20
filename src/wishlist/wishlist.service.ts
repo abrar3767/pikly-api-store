@@ -27,7 +27,7 @@ export class WishlistService {
         pricing: p.pricing,
         ratings: p.ratings,
         onSale: p.onSale,
-        inventory: { stock: p.inventory.stock },
+        inventory: { stock: p.inventory?.stock ?? 0 },
       }))
     return { products, count: products.length, userId }
   }

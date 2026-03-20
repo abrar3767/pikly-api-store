@@ -19,10 +19,6 @@ import { AdminCreateProductDto } from './dto/admin-create-product.dto'
 import { AdminUpdateProductDto } from './dto/admin-update-product.dto'
 import { Product, ProductDocument } from '../database/product.schema'
 
-// NOTE: filter-engine.ts and facet-engine.ts are no longer used.
-// All filtering and faceting is now handled by AlgoliaService.
-// Those two files can be safely deleted from src/common/.
-
 @Injectable()
 export class ProductsService implements OnModuleInit {
   private readonly logger = new Logger(ProductsService.name)
@@ -48,8 +44,6 @@ export class ProductsService implements OnModuleInit {
     this.products = docs.map(({ _id, __v, ...rest }: any) => rest)
     this.logger.log(`Product store loaded: ${this.products.length} products`)
 
-    // Sync active products to Algolia in the background.
-    // Do NOT await — startup must not block on Algolia.
     if (this.algolia.isReady()) {
       this.algolia
         .syncAll(this.products.filter((p: any) => p.isActive))
@@ -69,11 +63,19 @@ export class ProductsService implements OnModuleInit {
   findActiveProducts(): any[] {
     return this.products.filter((p: any) => p.isActive)
   }
+
+  // ── In-memory lookups (used by other services & curated lists) ─────────────
+
   findProductById(id: string): any | undefined {
-    return this.products.find((p) => p.id === id && p.isActive)
+    return this.products.find((p) => p.id === id && (p as any).isActive)
   }
+
   findProductBySlug(slug: string): any | undefined {
-    return this.products.find((p) => p.slug === slug && p.isActive)
+    return this.products.find((p) => p.slug === slug && (p as any).isActive)
+  }
+
+  findProductByAsin(asin: string): any | undefined {
+    return this.products.find((p) => (p as any).asin === asin && (p as any).isActive)
   }
 
   async getLiveProduct(productId: string): Promise<Product | null> {
@@ -82,179 +84,285 @@ export class ProductsService implements OnModuleInit {
 
   // ── Main product list ──────────────────────────────────────────────────────
 
-  async findAll(query: FilterProductsDto) {
-    // Cache key from sorted query params (same as before)
+  async findAll(query: FilterProductsDto): Promise<{ data: any; cacheHit: boolean }> {
     const sortedQuery = Object.keys(query as any)
       .sort()
       .reduce((acc: any, k) => { acc[k] = (query as any)[k]; return acc }, {})
     const cacheKey = `products:list:${JSON.stringify(sortedQuery)}`
 
-    const cached = this.cache.get<any>(cacheKey)
-    if (cached) return { ...cached, meta: { ...cached.meta, cacheHit: true } }
+    // Don't cache cursor-based requests — each cursor is a unique position
+    if (!query.cursor) {
+      const cached = this.cache.get<any>(cacheKey)
+      if (cached) return { data: cached, cacheHit: true }
+    }
 
-    // Algolia handles everything: search, filtering, facets, pagination
     const result = await this.algolia.fullSearch(query as any, this.findActiveProducts())
 
-    this.cache.set(cacheKey, { data: result.data }, TTL.PRODUCTS)
-    return result
+    // Only cache offset-based results
+    if (!query.cursor) {
+      this.cache.set(cacheKey, result.data, TTL.PRODUCTS)
+    }
+    return { data: result.data, cacheHit: false }
   }
+
+  // ── Curated lists — use new schema flat fields ────────────────────────────
 
   findFeatured() {
     return this.findActiveProducts()
-      .filter((p) => p.featured)
-      .sort((a, b) => b.ratings.average - a.ratings.average)
+      .filter((p) => (p as any).featured)
+      .sort((a, b) => ((b as any).avgRating ?? (b as any).ratings?.average ?? 0) - ((a as any).avgRating ?? (a as any).ratings?.average ?? 0))
       .slice(0, 12)
   }
+
   findBestsellers() {
     return this.findActiveProducts()
-      .filter((p) => p.bestSeller)
-      .sort((a, b) => (b.inventory?.sold ?? 0) - (a.inventory?.sold ?? 0))
+      .filter((p) => (p as any).bestSeller)
+      .sort((a, b) => ((b as any).soldCount ?? (b as any).inventory?.sold ?? 0) - ((a as any).soldCount ?? (a as any).inventory?.sold ?? 0))
       .slice(0, 12)
   }
+
   findNewArrivals() {
     return this.findActiveProducts()
-      .filter((p) => p.newArrival)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .filter((p) => (p as any).newArrival)
+      .sort((a, b) => ((b as any).createdAtMs ?? 0) - ((a as any).createdAtMs ?? 0))
       .slice(0, 12)
   }
+
   findTrending() {
     return this.findActiveProducts()
-      .filter((p) => p.trending)
+      .filter((p) => (p as any).trending)
+      .sort((a, b) => ((b as any).soldCount ?? 0) - ((a as any).soldCount ?? 0))
       .slice(0, 12)
   }
+
   findTopRated() {
     return this.findActiveProducts()
-      .filter((p) => p.topRated)
-      .sort((a, b) => b.ratings.average - a.ratings.average)
+      .filter((p) => (p as any).topRated)
+      .sort((a, b) => ((b as any).avgRating ?? (b as any).ratings?.average ?? 0) - ((a as any).avgRating ?? (a as any).ratings?.average ?? 0))
       .slice(0, 12)
   }
+
   findOnSale() {
     return this.findActiveProducts()
-      .filter((p) => p.onSale)
-      .sort((a, b) => b.pricing.discountPercent - a.pricing.discountPercent)
+      .filter((p) => (p as any).onSale)
+      .sort((a, b) => ((b as any).discountPercent ?? (b as any).pricing?.discountPercent ?? 0) - ((a as any).discountPercent ?? (a as any).pricing?.discountPercent ?? 0))
       .slice(0, 12)
   }
+
+  // ── Search suggestions ─────────────────────────────────────────────────────
 
   getSuggestions(q: string, liveCategories: any[] = []) {
     if (!q || q.trim().length < 2) return { suggestions: [] }
     const suggestions: any[] = []
     const active = this.findActiveProducts()
 
-    new Fuse(active, { keys: ['title', 'brand', 'tags'], threshold: 0.3, includeScore: true })
+    // Product suggestions via fuzzy search
+    new Fuse(active, {
+      keys: ['title', 'brand', 'tags', 'asin'],
+      threshold: 0.3,
+      includeScore: true,
+    })
       .search(q.trim())
       .slice(0, 3)
-      .forEach(({ item }) =>
+      .forEach(({ item }) => {
+        const p = item as any
         suggestions.push({
-          type: 'product',
-          title: item.title,
-          slug: item.slug,
-          image: item.media?.thumb ?? '',
-          price: item.pricing?.current,
-        }),
-      )
+          type:     'product',
+          title:    p.title,
+          slug:     p.slug,
+          asin:     p.asin ?? null,
+          image:    p.media?.mainImage ?? p.media?.images?.[0]?.url ?? '',
+          price:    p.price ?? p.pricing?.current ?? null,
+          rating:   p.avgRating ?? p.ratings?.average ?? null,
+          brand:    p.brand ?? null,
+          category: p.category ?? null,
+        })
+      })
 
+    // Category suggestions
     const cats = liveCategories.length
-      ? liveCategories.map((c: any) => c.slug)
-      : ['electronics', 'fashion', 'home-kitchen', 'beauty', 'sports-fitness', 'books']
+      ? liveCategories
+      : [
+          { slug: 'electronics',            name: 'Electronics' },
+          { slug: 'clothing-shoes-jewelry',  name: 'Clothing, Shoes & Jewelry' },
+          { slug: 'home-kitchen',            name: 'Home & Kitchen' },
+          { slug: 'beauty-personal-care',    name: 'Beauty & Personal Care' },
+          { slug: 'sports-outdoors',         name: 'Sports & Outdoors' },
+          { slug: 'toys-games',              name: 'Toys & Games' },
+          { slug: 'books',                   name: 'Books' },
+          { slug: 'health-personal-care',    name: 'Health & Personal Care' },
+        ]
+
     cats
-      .filter((c: string) => c.toLowerCase().includes(q.toLowerCase()))
+      .filter((c: any) => {
+        const name = c.name ?? c.slug ?? ''
+        const slug = c.slug ?? ''
+        return (
+          name.toLowerCase().includes(q.toLowerCase()) ||
+          slug.toLowerCase().includes(q.toLowerCase())
+        )
+      })
       .slice(0, 2)
-      .forEach((c: string) =>
+      .forEach((c: any) =>
         suggestions.push({
-          type: 'category',
-          title: c.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
-          slug: c,
+          type:  'category',
+          title: c.name ?? c.slug.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+          slug:  c.slug,
+          image: c.image ?? null,
         }),
       )
 
+    // Brand suggestions
     new Fuse(
-      [...new Set(active.map((p) => p.brand))].map((b) => ({ name: b })),
+      [...new Set(active.map((p) => (p as any).brand))].filter(Boolean).map((b) => ({ name: b })),
       { keys: ['name'], threshold: 0.3 },
     )
       .search(q)
       .slice(0, 2)
       .forEach(({ item }) =>
         suggestions.push({
-          type: 'brand',
+          type:  'brand',
           title: (item as any).name,
           query: `?brand=${encodeURIComponent((item as any).name)}`,
         }),
       )
 
+    // Query suggestion with price filter
     suggestions.push({
-      type: 'query',
+      type:  'query',
       title: `${q} under $500`,
       query: `?q=${encodeURIComponent(q)}&maxPrice=500`,
     })
+
     return { suggestions: suggestions.slice(0, 8) }
   }
 
-  findOne(slug: string) {
-    const product = this.findProductBySlug(slug)
+  // ── Single product ─────────────────────────────────────────────────────────
+  // Accepts: slug (always), asin (B0XXXXXXXXX), or internal id (prod_XXXX)
+
+  findOne(slugOrAsinOrId: string) {
+    // Try slug first (most common), then asin, then internal id
+    const product =
+      this.findProductBySlug(slugOrAsinOrId) ??
+      this.findProductByAsin(slugOrAsinOrId) ??
+      this.findProductById(slugOrAsinOrId)
+
     if (!product)
       throw new NotFoundException({
         code: 'PRODUCT_NOT_FOUND',
-        message: `Product "${slug}" not found`,
+        message: `Product "${slugOrAsinOrId}" not found`,
       })
 
-    const related = this.findActiveProducts()
-      .filter((p) => p.subcategory === product.subcategory && p.id !== product.id)
-      .sort(
-        (a, b) =>
-          Math.abs(a.pricing.current - product.pricing.current) -
-          Math.abs(b.pricing.current - product.pricing.current),
+    const p = product as any
+
+    // ── Related products — same subcategory, price-similar ─────────────────
+    const relatedProducts = this.findActiveProducts()
+      .filter((r: any) => r.subcategory === p.subcategory && r.id !== p.id)
+      .sort((a: any, b: any) =>
+        Math.abs((a.price ?? a.pricing?.current ?? 0) - (p.price ?? p.pricing?.current ?? 0)) -
+        Math.abs((b.price ?? b.pricing?.current ?? 0) - (p.price ?? p.pricing?.current ?? 0)),
       )
       .slice(0, 8)
-      .map((p) => ({
-        id: p.id, slug: p.slug, title: p.title, brand: p.brand,
-        media: p.media, pricing: p.pricing, ratings: p.ratings, onSale: p.onSale,
+      .map((r: any) => ({
+        id:       r.id,
+        slug:     r.slug,
+        asin:     r.asin ?? null,
+        title:    r.title,
+        brand:    r.brand,
+        image:    r.media?.mainImage ?? r.media?.images?.[0]?.url ?? '',
+        price:    r.price           ?? r.pricing?.current      ?? null,
+        original: r.pricing?.original ?? null,
+        discount: r.discountPercent  ?? r.pricing?.discountPercent ?? 0,
+        rating:   r.avgRating        ?? r.ratings?.average     ?? null,
+        reviews:  r.ratings?.total   ?? r.ratings?.count       ?? 0,
+        isPrime:  r.isPrime ?? false,
+        onSale:   r.onSale  ?? false,
+        badges:   r.badges  ?? null,
       }))
 
-    const seed = product.id.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)
+    // ── Frequently bought with — different category ────────────────────────
+    const seed = p.id.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)
     const frequentlyBoughtWith = this.findActiveProducts()
-      .filter((p) => p.category !== product.category)
-      .sort((a, b) => ((seed + a.id.charCodeAt(0)) % 1000) - ((seed + b.id.charCodeAt(0)) % 1000))
+      .filter((r: any) => r.category !== p.category)
+      .sort((a: any, b: any) => ((seed + a.id.charCodeAt(0)) % 1000) - ((seed + b.id.charCodeAt(0)) % 1000))
       .slice(0, 4)
-      .map((p) => ({
-        id: p.id, slug: p.slug, title: p.title, brand: p.brand,
-        media: p.media, pricing: p.pricing, ratings: p.ratings,
+      .map((r: any) => ({
+        id:      r.id,
+        slug:    r.slug,
+        asin:    r.asin ?? null,
+        title:   r.title,
+        brand:   r.brand,
+        image:   r.media?.mainImage ?? r.media?.images?.[0]?.url ?? '',
+        price:   r.price  ?? r.pricing?.current ?? null,
+        rating:  r.avgRating ?? r.ratings?.average ?? null,
+        isPrime: r.isPrime ?? false,
       }))
 
-    const stock = product.inventory?.stock ?? 0
+    // ── Stock status — use new availability field ───────────────────────────
+    const stockLevel = p.availability?.stockLevel ?? p.inventory?.stock ?? 0
+    const stockStatus =
+      p.availability?.status ??
+      (stockLevel === 0 ? 'out_of_stock' : stockLevel <= 5 ? 'limited' : 'in_stock')
+
+    // ── Delivery estimate ──────────────────────────────────────────────────
+    const deliveryEstimate = {
+      standard: p.delivery?.standardDelivery?.date ?? '3-7 business days',
+      fastest:  p.delivery?.fastestDelivery?.date  ?? '1-2 business days',
+      isPrime:  p.isPrime ?? p.delivery?.isPrime   ?? false,
+      isFree:   p.freeShipping ?? p.delivery?.isFreeShipping ?? false,
+      soldBy:   p.delivery?.soldBy ?? 'Amazon',
+      fulfilledBy: p.delivery?.fulfilledBy ?? 'Amazon',
+    }
+
     return {
       ...product,
-      relatedProducts: related,
+      // Ensure these computed/alias fields are always present
+      mainImage:             p.media?.mainImage ?? p.media?.images?.[0]?.url ?? '',
+      price:                 p.price  ?? p.pricing?.current  ?? null,
+      originalPrice:         p.pricing?.original             ?? null,
+      discountPercent:       p.discountPercent ?? p.pricing?.discountPercent ?? 0,
+      avgRating:             p.avgRating ?? p.ratings?.average ?? null,
+      ratingTotal:           p.ratings?.total ?? p.ratings?.count ?? 0,
+      stockStatus,
+      stockLevel,
+      deliveryEstimate,
+      relatedProducts,
       frequentlyBoughtWith,
-      stockStatus: stock === 0 ? 'out_of_stock' : stock <= 10 ? 'low_stock' : 'in_stock',
-      deliveryEstimate: {
-        standard: `${product.shipping?.estimatedDays?.min ?? 3}-${product.shipping?.estimatedDays?.max ?? 7} days`,
-        express: '1-2 days',
-      },
     }
   }
 
+  // ── Reviews ────────────────────────────────────────────────────────────────
+
   findReviews(slug: string, query: ReviewQueryDto) {
-    const product = this.products.find((p) => p.slug === slug)
+    // Accept slug or asin
+    const product =
+      this.products.find((p) => (p as any).slug === slug) ??
+      this.products.find((p) => (p as any).asin === slug)
+
     if (!product)
       throw new NotFoundException({
         code: 'PRODUCT_NOT_FOUND',
         message: `Product "${slug}" not found`,
       })
 
-    let reviews = [...(product.reviews ?? [])]
-    if (query.rating) reviews = reviews.filter((r) => r.rating === Number(query.rating))
-    if (query.verified === true) reviews = reviews.filter((r) => r.verified === true)
+    const p = product as any
+    let reviews = [...(p.reviews ?? [])]
+
+    if (query.rating)            reviews = reviews.filter((r) => r.rating === Number(query.rating))
+    if (query.verified === true)  reviews = reviews.filter((r) => r.verified === true)
 
     switch (query.sort) {
-      case 'helpful':    reviews.sort((a, b) => b.helpful - a.helpful); break
-      case 'rating_high':reviews.sort((a, b) => b.rating  - a.rating);  break
-      case 'rating_low': reviews.sort((a, b) => a.rating  - b.rating);  break
-      default:           reviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      case 'helpful':     reviews.sort((a, b) => (b.helpfulVotes ?? b.helpful ?? 0) - (a.helpfulVotes ?? a.helpful ?? 0)); break
+      case 'rating_high': reviews.sort((a, b) => b.rating  - a.rating);  break
+      case 'rating_low':  reviews.sort((a, b) => a.rating  - b.rating);  break
+      default:
+        reviews.sort((a, b) => new Date(b.date ?? b.createdAt ?? 0).getTime() - new Date(a.date ?? a.createdAt ?? 0).getTime())
     }
 
     const paginated = smartPaginate(reviews, {
       page: query.page, limit: query.limit ?? 10, cursor: query.cursor,
     })
+
     return {
       reviews: paginated.items,
       pagination: {
@@ -265,70 +373,109 @@ export class ProductsService implements OnModuleInit {
         ...(paginated.mode === 'cursor' && { nextCursor: (paginated as any).nextCursor, prevCursor: (paginated as any).prevCursor }),
       },
       summary: {
-        average: product.ratings.average, total: product.ratings.count,
-        distribution: product.ratings.distribution ?? {},
+        average:       p.ratings?.average    ?? p.avgRating ?? 0,
+        total:         p.ratings?.total      ?? p.ratings?.count ?? 0,
+        breakdown:     p.ratings?.breakdown  ?? {},
         verifiedCount: reviews.filter((r) => r.verified).length,
-        withImages: reviews.filter((r) => r.images?.length > 0).length,
+        withImages:    reviews.filter((r) => r.images?.length > 0).length,
       },
     }
   }
 
   async submitReview(slug: string, userId: string, dto: SubmitReviewDto) {
-    const product = await this.productModel.findOne({ slug })
+    // Accept slug or asin
+    const product = await this.productModel.findOne({
+      $or: [{ slug }, { asin: slug }],
+    })
     if (!product)
       throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${slug}" not found` })
 
     const alreadyReviewed = (product.reviews ?? []).some((r: any) => r.userId === userId)
     if (alreadyReviewed)
-      throw new BadRequestException({ code: 'ALREADY_REVIEWED', message: 'You have already submitted a review for this product.' })
+      throw new BadRequestException({
+        code: 'ALREADY_REVIEWED',
+        message: 'You have already submitted a review for this product.',
+      })
 
     const review = {
-      id: `rev_${userId}_${Date.now()}`, userId,
-      rating: dto.rating, title: dto.title, body: dto.body,
-      verified: false, helpful: 0, images: dto.images ?? [],
-      createdAt: new Date().toISOString(),
+      id:           `rev_${userId}_${Date.now()}`,
+      userId,
+      rating:       dto.rating,
+      title:        dto.title,
+      body:         dto.body,
+      verified:     false,
+      helpfulVotes: 0,
+      images:       (dto as any).images ?? [],
+      date:         new Date().toISOString().split('T')[0],
+      reviewer:     `User_${userId.slice(-4)}`,
     }
 
-    await this.productModel.updateOne({ slug }, [
+    await this.productModel.updateOne({ _id: product._id }, [
       {
         $set: {
-          reviews: { $concatArrays: ['$reviews', [review]] },
-          'ratings.count': { $add: ['$ratings.count', 1] },
+          reviews:           { $concatArrays: ['$reviews', [review]] },
+          'ratings.total':   { $add: ['$ratings.total', 1] },
           'ratings.average': {
             $round: [{
               $divide: [{
                 $reduce: {
-                  input: { $concatArrays: ['$reviews', [review]] },
+                  input:        { $concatArrays: ['$reviews', [review]] },
                   initialValue: 0,
-                  in: { $add: ['$$value', '$$this.rating'] },
+                  in:           { $add: ['$$value', '$$this.rating'] },
                 },
-              }, { $add: ['$ratings.count', 1] }],
+              }, { $add: ['$ratings.total', 1] }],
+            }, 1],
+          },
+          // Keep flat avgRating in sync
+          avgRating: {
+            $round: [{
+              $divide: [{
+                $reduce: {
+                  input:        { $concatArrays: ['$reviews', [review]] },
+                  initialValue: 0,
+                  in:           { $add: ['$$value', '$$this.rating'] },
+                },
+              }, { $add: ['$ratings.total', 1] }],
             }, 1],
           },
         },
       },
     ])
 
-    this.logger.log(`Review submitted: slug=${slug} userId=${userId} rating=${dto.rating}`)
+    this.logger.log(`Review submitted: slug=${product.slug} userId=${userId} rating=${dto.rating}`)
     await this.invalidate()
     return review
   }
 
-  // ── Inventory ──────────────────────────────────────────────────────────────
+  // ── Inventory (called by orders service) ──────────────────────────────────
 
   async decrementStock(productId: string, quantity: number): Promise<boolean> {
+    // Decrement both inventory.stock and availability.stockLevel
     const result = await this.productModel.findOneAndUpdate(
       { id: productId, 'inventory.stock': { $gte: quantity } },
-      { $inc: { 'inventory.stock': -quantity, 'inventory.sold': quantity } },
+      {
+        $inc: {
+          'inventory.stock':           -quantity,
+          'inventory.sold':             quantity,
+          'availability.stockLevel':   -quantity,
+          soldCount:                    quantity,
+        },
+      },
       { new: true },
     )
+
     if (result) {
-      const cached = this.products.find((p) => p.id === productId)
+      const cached = this.products.find((p) => p.id === productId) as any
       if (cached) {
-        cached.inventory.stock -= quantity
-        if (cached.inventory.sold !== undefined) cached.inventory.sold += quantity
+        if (cached.inventory?.stock !== undefined) cached.inventory.stock -= quantity
+        if (cached.inventory?.sold  !== undefined) cached.inventory.sold  += quantity
+        if (cached.availability?.stockLevel !== undefined) cached.availability.stockLevel -= quantity
+        if (cached.soldCount !== undefined) cached.soldCount += quantity
+        // Update inStock flag
+        cached.inStock = (cached.availability?.stockLevel ?? cached.inventory?.stock ?? 0) > 0
       }
     }
+
     if (!result) this.logger.warn(`Stock decrement failed: productId=${productId} requested=${quantity}`)
     return !!result
   }
@@ -336,17 +483,29 @@ export class ProductsService implements OnModuleInit {
   async incrementStock(productId: string, quantity: number): Promise<void> {
     await this.productModel.findOneAndUpdate(
       { id: productId },
-      { $inc: { 'inventory.stock': quantity, 'inventory.sold': -quantity } },
+      {
+        $inc: {
+          'inventory.stock':          quantity,
+          'inventory.sold':          -quantity,
+          'availability.stockLevel':  quantity,
+          soldCount:                 -quantity,
+        },
+      },
     )
-    const cached = this.products.find((p) => p.id === productId)
+
+    const cached = this.products.find((p) => p.id === productId) as any
     if (cached) {
-      cached.inventory.stock += quantity
-      if (cached.inventory.sold !== undefined) cached.inventory.sold -= quantity
+      if (cached.inventory?.stock !== undefined) cached.inventory.stock += quantity
+      if (cached.inventory?.sold  !== undefined) cached.inventory.sold  -= quantity
+      if (cached.availability?.stockLevel !== undefined) cached.availability.stockLevel += quantity
+      if (cached.soldCount !== undefined) cached.soldCount -= quantity
+      cached.inStock = (cached.availability?.stockLevel ?? cached.inventory?.stock ?? 0) > 0
     }
+
     this.logger.log(`Stock restored: productId=${productId} qty=${quantity}`)
   }
 
-  // ── Admin ─────────────────────────────────────────────────────────────────
+  // ── Admin ──────────────────────────────────────────────────────────────────
 
   async adminFindAll(query: { page?: number; limit?: number; search?: string; isActive?: boolean }) {
     const filter: any = {}
@@ -356,6 +515,7 @@ export class ProductsService implements OnModuleInit {
       filter.$or = [
         { title: { $regex: escaped, $options: 'i' } },
         { brand: { $regex: escaped, $options: 'i' } },
+        { asin:  { $regex: escaped, $options: 'i' } },
       ]
     }
     const p = Number(query.page ?? 1), l = Number(query.limit ?? 20), skip = (p - 1) * l
@@ -364,7 +524,7 @@ export class ProductsService implements OnModuleInit {
       this.productModel.countDocuments(filter),
     ])
     return {
-      products: items,
+      products:   items,
       pagination: { total, page: p, limit: l, totalPages: Math.ceil(total / l), hasNextPage: p * l < total },
     }
   }
@@ -373,6 +533,7 @@ export class ProductsService implements OnModuleInit {
     const existing = await this.productModel.findOne({ $or: [{ id: body.id }, { slug: body.slug }] })
     if (existing)
       throw new BadRequestException({ code: 'DUPLICATE_PRODUCT', message: 'A product with this id or slug already exists' })
+
     const product = await this.productModel.create(body)
     await this.invalidate()
     if (this.algolia.isReady()) await this.algolia.syncOne({ ...body, isActive: true })
@@ -384,6 +545,7 @@ export class ProductsService implements OnModuleInit {
     const product = await this.productModel.findOneAndUpdate({ id }, { $set: body }, { new: true })
     if (!product)
       throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${id}" not found` })
+
     await this.invalidate()
     if (this.algolia.isReady()) await this.algolia.syncOne(product)
     return product
@@ -393,6 +555,7 @@ export class ProductsService implements OnModuleInit {
     const product = await this.productModel.findOneAndDelete({ id })
     if (!product)
       throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product "${id}" not found` })
+
     await this.invalidate()
     if (this.algolia.isReady()) await this.algolia.deleteOne(id)
     this.logger.log(`Product deleted: id=${id}`)

@@ -70,7 +70,7 @@ export class CategoryShowcaseService {
         products: cat.products.slice(0, productsLimit).map((p: any) => ({
           title: p.title,
           slug: p.slug,
-          image: p.media?.small ?? p.media?.thumb ?? null,
+          image: p.media?.mainImage ?? p.media?.images?.[0]?.url ?? p.media?.thumb ?? null,
         })),
       })),
       pagination: {

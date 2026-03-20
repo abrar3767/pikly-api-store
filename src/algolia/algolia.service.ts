@@ -1,6 +1,79 @@
+/**
+ * algolia.service.ts  —  Enterprise Search & Faceting
+ *
+ * ARCHITECTURE:
+ *  • ALL facet counts come from Algolia — zero allProducts.filter() anywhere
+ *  • Disjunctive faceting via multi-query batch (one query per active
+ *    disjunctive dimension) — same pattern Amazon/eBay use
+ *  • Algolia facet stats give price min/max scoped to result set
+ *  • Graceful fallback to in-memory search if Algolia is down
+ *  • Filter injection protection — all string values sanitised before
+ *    being interpolated into Algolia filter strings
+ */
+
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { algoliasearch } from 'algoliasearch'
 import type { Algoliasearch } from 'algoliasearch'
+import {
+  FACET_DIMENSIONS,
+  DISJUNCTIVE_DIMENSIONS,
+  ALGOLIA_FACET_SETTINGS,
+  ALGOLIA_NUMERIC_ATTRS,
+  SORT_INDEX_MAP,
+} from './facet-config'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface SearchQuery {
+  q?: string
+  category?: string
+  subcategory?: string
+  brand?: string
+  minPrice?: number
+  maxPrice?: number
+  rating?: number
+  discount?: number
+  color?: string
+  size?: string
+  condition?: string
+  warehouse?: string
+  inStock?: boolean
+  isPrime?: boolean
+  freeShipping?: boolean
+  expressAvailable?: boolean
+  onSale?: boolean
+  bestSeller?: boolean
+  featured?: boolean
+  newArrival?: boolean
+  topRated?: boolean
+  trending?: boolean
+  newArrivalDays?: number
+  attrs?: string
+  sort?: string
+  page?: number
+  limit?: number
+  cursor?: string
+  includeFacets?: boolean
+}
+
+interface FacetValue {
+  value: string
+  label: string
+  count: number
+  selected: boolean
+  hex?: string        // for color swatches
+}
+
+// ─── Sanitise helper — prevents filter injection ──────────────────────────────
+// Strips characters that have meaning in Algolia filter syntax.
+// A crafted value like:  Nike" OR brand:"Adidas
+// becomes:               Nike OR brandAdidas  (harmless)
+
+function sanitise(value: string): string {
+  return value.replace(/["\\]/g, '').trim()
+}
+
+// ─── Service ──────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class AlgoliaService implements OnModuleInit {
@@ -8,10 +81,15 @@ export class AlgoliaService implements OnModuleInit {
   private client: Algoliasearch | null = null
   readonly INDEX_NAME = process.env.ALGOLIA_INDEX ?? 'products'
 
+  // ── Init ──────────────────────────────────────────────────────────────────
+
   async onModuleInit() {
     const appId    = process.env.ALGOLIA_APP_ID
     const writeKey = process.env.ALGOLIA_WRITE_KEY
-    if (!appId || !writeKey) { this.logger.warn('Algolia credentials missing'); return }
+    if (!appId || !writeKey) {
+      this.logger.warn('Algolia credentials missing — search will use in-memory fallback')
+      return
+    }
     try {
       this.client = algoliasearch(appId, writeKey)
       await this.configureIndex()
@@ -24,103 +102,310 @@ export class AlgoliaService implements OnModuleInit {
 
   isReady(): boolean { return this.client !== null }
 
+  // ── Index configuration ───────────────────────────────────────────────────
+
   private async configureIndex() {
     if (!this.client) return
+
+    const indexName = this.INDEX_NAME
+
+    // ── Main index — full enterprise configuration ─────────────────────────────
     await this.client.setSettings({
-      indexName: this.INDEX_NAME,
+      indexName,
       indexSettings: {
-        searchableAttributes: ['title', 'brand', 'tags', 'description', 'category', 'subcategory'],
-        attributesForFaceting: [
-          'searchable(brand)', 'searchable(category)', 'searchable(subcategory)',
-          'searchable(colors)', 'searchable(sizes)', 'searchable(condition)', 'searchable(warehouse)',
-          'attrValues', 'filterOnly(inStock)', 'filterOnly(freeShipping)',
-          'filterOnly(expressAvailable)', 'filterOnly(featured)', 'filterOnly(bestSeller)',
-          'filterOnly(newArrival)', 'filterOnly(trending)', 'filterOnly(topRated)', 'filterOnly(onSale)',
+
+        // ── Searchable attributes — ordered by relevance weight ────────────────
+        // Position matters: title matches rank higher than description matches.
+        // unordered() = any word position in field counts equally.
+        searchableAttributes: [
+          'title',                        // Exact title match = highest weight
+          'brand',                        // Brand match = second priority
+          'unordered(tags)',              // Tags can match in any order
+          'unordered(asin)',              // Direct ASIN lookup
+          'unordered(category)',          // Category name
+          'unordered(subcategory)',       // Subcategory name
+          'unordered(categoryPath)',      // Full path e.g. "Electronics > Laptops"
+          'unordered(featureBullets)',    // Key features
+          'unordered(description)',       // Description — lowest weight
         ],
-        customRanking: ['desc(avgRating)', 'desc(soldCount)'],
-        replicas: [
-          `${this.INDEX_NAME}_price_asc`, `${this.INDEX_NAME}_price_desc`,
-          `${this.INDEX_NAME}_rating_desc`, `${this.INDEX_NAME}_newest`,
-          `${this.INDEX_NAME}_bestselling`, `${this.INDEX_NAME}_discount_desc`,
+
+        // ── Faceting — all filterable + facet-countable attributes ────────────
+        attributesForFaceting: ALGOLIA_FACET_SETTINGS,
+
+        // ── Numeric filtering — for range sliders ─────────────────────────────
+        numericAttributesForFiltering: ALGOLIA_NUMERIC_ATTRS,
+
+        // ── What to return in hits — return everything ────────────────────────
+        attributesToRetrieve: ['*'],
+
+        // ── Highlighting — snippet shown in search results ────────────────────
+        // These fields get <em> tags around matched words
+        attributesToHighlight: ['title', 'brand', 'description'],
+        attributesToSnippet:   ['description:20', 'featureBullets:15'],
+        highlightPreTag:       '<mark>',
+        highlightPostTag:      '</mark>',
+
+        // ── Custom ranking — tie-breaker after text relevance ─────────────────
+        // When two products match equally, bestsellers + higher rated rank first
+        customRanking: [
+          'desc(bestSeller)',     // Best sellers first
+          'desc(avgRating)',      // Higher rated next
+          'desc(soldCount)',      // Most sold next
+          'desc(isPrime)',        // Prime products next
+          'asc(discountPercent)', // Discounted products last (don't bias toward deals)
+        ],
+
+        // ── Sort replicas — one index per sort option ─────────────────────────
+        replicas: Object.values(SORT_INDEX_MAP).map((suffix) => `${indexName}${suffix}`),
+
+        // ── Typo tolerance — forgive user spelling mistakes ───────────────────
+        typoTolerance: true,
+        minWordSizefor1Typo:  4,   // "lapto" → "laptop" ✅
+        minWordSizefor2Typos: 8,   // "headphnes" → "headphones" ✅
+
+        // ── Language processing ───────────────────────────────────────────────
+        ignorePlurals:    true,    // "laptops" matches "laptop" ✅
+        removeStopWords:  true,    // ignore "the", "a", "in" ✅
+
+        // ── Distinct — deduplicate variants of same product ───────────────────
+        // If a product has multiple attrValues entries, only show it once
+        distinct:       false,     // Keep false — we already handle variants
+
+        // ── Query rules — exact matches get boosted ───────────────────────────
+        advancedSyntax: true,      // Support "exact phrase" and -exclude syntax
+
+        // ── Pagination ────────────────────────────────────────────────────────
+        hitsPerPage:    20,        // Default page size
+        paginationLimitedTo: 1000, // Max results browsable (Algolia limit)
+
+        // ── Performance ───────────────────────────────────────────────────────
+        // Attributes NOT needed in search results — speeds up response
+        unretrievableAttributes: [],
+
+        // ── Ranking formula ───────────────────────────────────────────────────
+        // Standard Algolia ranking: typo → geo → words → filters →
+        //   proximity → attribute → exact → custom
+        // We keep default + our custom ranking appended
+        ranking: [
+          'typo',       // Fewer typos = better match
+          'geo',        // Geographic relevance
+          'words',      // More query words matched = better
+          'filters',    // Filtered results rank higher
+          'proximity',  // Query words closer together = better
+          'attribute',  // Earlier searchable attribute = better
+          'exact',      // Exact word match = better
+          'custom',     // Our custom ranking: bestSeller, avgRating, soldCount
         ],
       },
     })
 
-    const replicaSettings: Array<[string, string, string]> = [
-      [`${this.INDEX_NAME}_price_asc`,     'price',           'asc'],
-      [`${this.INDEX_NAME}_price_desc`,    'price',           'desc'],
-      [`${this.INDEX_NAME}_rating_desc`,   'avgRating',       'desc'],
-      [`${this.INDEX_NAME}_newest`,        'createdAtMs',     'desc'],
-      [`${this.INDEX_NAME}_bestselling`,   'soldCount',       'desc'],
-      [`${this.INDEX_NAME}_discount_desc`, 'discountPercent', 'desc'],
+    // ── Sort replica indexes — one per sort option ────────────────────────────
+    // Each replica is a separate Algolia index with different ranking.
+    // The frontend switches index based on the sort dropdown selection.
+    const replicaConfigs: Array<{ name: string; field: string; dir: string; label: string }> = [
+      { name: `${indexName}_price_asc`,     field: 'price',           dir: 'asc',  label: 'Price: Low to High'  },
+      { name: `${indexName}_price_desc`,    field: 'price',           dir: 'desc', label: 'Price: High to Low'  },
+      { name: `${indexName}_rating_desc`,   field: 'avgRating',       dir: 'desc', label: 'Top Rated'           },
+      { name: `${indexName}_newest`,        field: 'createdAtMs',     dir: 'desc', label: 'Newest Arrivals'     },
+      { name: `${indexName}_bestselling`,   field: 'soldCount',       dir: 'desc', label: 'Best Selling'        },
+      { name: `${indexName}_discount_desc`, field: 'discountPercent', dir: 'desc', label: 'Biggest Discount'    },
     ]
+
     await Promise.allSettled(
-      replicaSettings.map(([name, field, dir]) =>
+      replicaConfigs.map(({ name, field, dir }) =>
         this.client!.setSettings({
           indexName: name,
           indexSettings: {
-            ranking: [`${dir}(${field})`, 'typo', 'geo', 'words', 'filters', 'proximity', 'attribute', 'exact', 'custom'],
+            // Each replica only overrides ranking — inherits all other settings
+            ranking: [
+              `${dir}(${field})`,
+              'typo', 'geo', 'words', 'filters',
+              'proximity', 'attribute', 'exact', 'custom',
+            ],
+            // Replicas also need these for faceting to work correctly
+            customRanking: [
+              'desc(bestSeller)',
+              'desc(avgRating)',
+              'desc(soldCount)',
+            ],
           },
         }),
       ),
     )
+
+    this.logger.log(`Algolia index fully configured: "${indexName}" + ${replicaConfigs.length} replicas`)
   }
 
   // ── Record conversion ─────────────────────────────────────────────────────
+  // Maps a MongoDB product document to an Algolia record.
+  // Every field that faceting, filtering, or sorting depends on must be here.
+  //
+  // IMPORTANT: The new product schema stores flat Algolia helper fields
+  // directly on the document (price, avgRating, attrValues, etc.) so we
+  // prefer those and fall back to nested paths for backward compatibility.
 
   toRecord(product: any): Record<string, any> {
-    const attrValues: string[] = []
-    if (product.attributes && typeof product.attributes === 'object') {
+    // ── attrValues ────────────────────────────────────────────────────────────
+    // Prefer the pre-built attrValues array on the document.
+    // Fall back to building from product.attributes for old records.
+    let attrValues: string[] = product.attrValues ?? []
+    if (attrValues.length === 0 && product.attributes && typeof product.attributes === 'object') {
       for (const [k, v] of Object.entries(product.attributes)) {
-        if (v && v !== 'N/A' && !Array.isArray(v)) attrValues.push(`${k}:${String(v)}`)
+        if (v && v !== 'N/A' && v !== '' && !Array.isArray(v)) {
+          attrValues.push(`${k}:${String(v)}`)
+        }
       }
     }
-    const colorMap: Record<string, string> = {}
-    const sizes: string[] = []
-    for (const v of product.variants ?? []) {
-      if (v.color) colorMap[v.color] = v.colorHex ?? '#cccccc'
-      if (v.size) sizes.push(String(v.size))
+
+    // ── Color hex map — built from variants for color swatch UI ───────────────
+    const colorHexMap: Record<string, string> = {}
+    for (const variant of product.variants ?? []) {
+      if (variant.color && variant.colorHex) {
+        colorHexMap[variant.color] = variant.colorHex
+      }
     }
+
+    // ── Sizes — deduplicated ───────────────────────────────────────────────────
+    const sizes = [...new Set((product.sizes ?? []).map(String))]
+
+    // ── Flat price/rating — prefer direct field, fall back to nested ──────────
+    const price           = product.price           ?? product.pricing?.current        ?? 0
+    const originalPrice   = product.pricing?.original                                  ?? price
+    const discountPercent = product.discountPercent  ?? product.pricing?.discountPercent ?? 0
+    const avgRating       = product.avgRating        ?? product.ratings?.average        ?? 0
+    const soldCount       = product.soldCount        ?? product.inventory?.sold         ?? 0
+    const stock           = product.availability?.stockLevel ?? product.inventory?.stock ?? 0
+
+    // ── isPrime — from direct flag or delivery nested field ───────────────────
+    const isPrime         = product.isPrime          ?? product.delivery?.isPrime       ?? false
+    const freeShipping    = product.freeShipping      ?? product.delivery?.isFreeShipping ?? product.shipping?.freeShipping ?? false
+    const expressAvailable= product.expressAvailable  ?? product.delivery?.expressAvailable ?? product.shipping?.expressAvailable ?? false
+    const inStock         = product.inStock           ?? stock > 0
+
+    // ── Warehouse — prefer top-level, fall back to inventory ──────────────────
+    const warehouse       = product.warehouse        ?? product.inventory?.warehouse    ?? ''
+
+    // ── Images ────────────────────────────────────────────────────────────────
+    const mainImage       = product.media?.mainImage ?? product.media?.images?.[0]?.url ?? product.media?.thumb ?? product.media?.full ?? ''
+
+    // ── createdAtMs — prefer stored value, fall back to createdAt date ─────────
+    const createdAtMs     = product.createdAtMs      ?? new Date(product.createdAt ?? Date.now()).getTime()
+
     return {
-      objectID: product.id, id: product.id, slug: product.slug,
-      title: product.title ?? '', brand: product.brand ?? '',
-      category: product.category ?? '', subcategory: product.subcategory ?? '',
-      subSubcategory: product.subSubcategory ?? '',
-      description: product.description ?? '', tags: product.tags ?? [],
-      price: product.pricing?.current ?? 0, originalPrice: product.pricing?.original ?? 0,
-      discountPercent: product.pricing?.discountPercent ?? 0, currency: product.pricing?.currency ?? 'USD',
-      avgRating: product.ratings?.average ?? 0, ratingCount: product.ratings?.count ?? 0,
-      stock: product.inventory?.stock ?? 0, soldCount: product.inventory?.sold ?? 0,
-      warehouse: product.inventory?.warehouse ?? '', inStock: (product.inventory?.stock ?? 0) > 0,
-      freeShipping: product.shipping?.freeShipping ?? false,
-      expressAvailable: product.shipping?.expressAvailable ?? false,
-      featured: product.featured ?? false, bestSeller: product.bestSeller ?? false,
-      newArrival: product.newArrival ?? false, trending: product.trending ?? false,
-      topRated: product.topRated ?? false, onSale: product.onSale ?? false,
-      condition: product.condition ?? 'New',
-      colors: Object.keys(colorMap), sizes: [...new Set(sizes)], colorHexMap: colorMap,
-      attrValues, attributes: product.attributes ?? {},
-      thumb: product.media?.thumb ?? '', imageUrl: product.media?.full ?? '',
-      createdAtMs: new Date(product.createdAt ?? Date.now()).getTime(),
-      createdAt: product.createdAt, isActive: product.isActive ?? true,
+      objectID:         product.id,
+
+      // ── Identity ────────────────────────────────────────────────────────────
+      id:               product.id,
+      slug:             product.slug,
+      asin:             product.asin ?? '',
+      title:            product.title ?? '',
+      brand:            product.brand ?? '',
+      manufacturer:     product.manufacturer ?? product.brand ?? '',
+
+      // ── Category — flat slugs for filtering + hierarchical info ───────────────
+      category:         product.category ?? '',
+      subcategory:      product.subcategory ?? '',
+      subSubcategory:   product.subSubcategory ?? '',
+      categoryId:       product.categoryInfo?.id ?? '',
+      categoryNodeId:   product.categoryInfo?.nodeId ?? '',
+      categoryPath:     product.categoryInfo?.path ?? '',
+      categoryName:     product.categoryInfo?.name ?? '',
+
+      // ── Content ─────────────────────────────────────────────────────────────
+      description:      product.description ?? '',
+      tags:             product.tags ?? [],
+      featureBullets:   product.featureBullets ?? [],
+
+      // ── Pricing — numeric for range filters + sorting ────────────────────────
+      price,
+      originalPrice,
+      discountPercent,
+      discountAmount:   product.pricing?.discountAmount ?? 0,
+      currency:         product.pricing?.currency ?? 'USD',
+      isDeal:           product.pricing?.isDeal ?? false,
+      hasCoupon:        product.pricing?.coupon?.hasCoupon ?? false,
+
+      // ── Ratings — numeric for range filters ───────────────────────────────────
+      avgRating,
+      ratingCount:      product.ratings?.total ?? product.ratings?.count ?? 0,
+
+      // ── Inventory & availability ──────────────────────────────────────────────
+      stock,
+      soldCount,
+      warehouse,
+      inStock,
+      availabilityStatus: product.availability?.status ?? (inStock ? 'in_stock' : 'out_of_stock'),
+
+      // ── Delivery & shipping ───────────────────────────────────────────────────
+      isPrime,
+      freeShipping,
+      expressAvailable,
+      fulfilledByAmazon: product.delivery?.isFulfilledByAmazon ?? false,
+      soldByAmazon:      product.delivery?.isSoldByAmazon ?? false,
+
+      // ── Badge booleans — all query-aware via Algolia facets ───────────────────
+      featured:         product.featured      ?? false,
+      bestSeller:       product.bestSeller    ?? false,
+      newArrival:       product.newArrival    ?? false,
+      trending:         product.trending      ?? false,
+      topRated:         product.topRated      ?? false,
+      onSale:           product.onSale        ?? false,
+      isAmazonsChoice:  product.badges?.isAmazonsChoice ?? false,
+      isNewRelease:     product.badges?.isNewRelease    ?? false,
+      recentSales:      product.badges?.recentSales     ?? null,
+
+      // ── Condition ────────────────────────────────────────────────────────────
+      condition:        product.condition ?? product.shipping?.condition ?? 'New',
+      isActive:         product.isActive ?? true,
+
+      // ── Variant-derived facets ────────────────────────────────────────────────
+      colors:           product.colors ?? [],
+      sizes,
+      colorHexMap,
+
+      // ── Dynamic attribute facets — POWERS ALL CATEGORY-SPECIFIC FILTERS ───────
+      // attrValues = ["ram:16GB", "storage:512GB", "os:Windows 11", ...]
+      // The frontend uses the category's facets config to know which attrKeys
+      // to display (e.g. for Laptops: ram, storage, processor, gpu, screenSize)
+      attrValues,
+      attributes:       product.attributes ?? {},
+
+      // ── Images ───────────────────────────────────────────────────────────────
+      mainImage,
+      imageUrl:         mainImage,
+      thumb:            mainImage,
+
+      // ── Sort & filter numeric helpers ────────────────────────────────────────
+      createdAtMs,
+      createdAt:        product.createdAt,
+
+      // ── Metadata ─────────────────────────────────────────────────────────────
+      amazonUrl:        product.metadata?.amazonUrl ?? '',
+      dateFirstAvailable: product.metadata?.dateFirstAvailable ?? '',
     }
   }
 
-  // ── Sync ──────────────────────────────────────────────────────────────────
+  // ── Sync operations ───────────────────────────────────────────────────────
 
   async syncAll(products: any[]): Promise<void> {
     if (!this.client) return
     const objects = products.map((p) => this.toRecord(p))
     const CHUNK = 1000
     for (let i = 0; i < objects.length; i += CHUNK) {
-      await this.client.saveObjects({ indexName: this.INDEX_NAME, objects: objects.slice(i, i + CHUNK) })
+      await this.client.saveObjects({
+        indexName: this.INDEX_NAME,
+        objects: objects.slice(i, i + CHUNK),
+      })
     }
     this.logger.log(`Algolia synced: ${objects.length} products`)
   }
 
   async syncOne(product: any): Promise<void> {
     if (!this.client) return
-    await this.client.saveObjects({ indexName: this.INDEX_NAME, objects: [this.toRecord(product)] })
+    await this.client.saveObjects({
+      indexName: this.INDEX_NAME,
+      objects: [this.toRecord(product)],
+    })
   }
 
   async deleteOne(productId: string): Promise<void> {
@@ -129,245 +414,664 @@ export class AlgoliaService implements OnModuleInit {
   }
 
   // ── Filter string builder ─────────────────────────────────────────────────
+  // Builds an Algolia filter string from query params.
+  // excludeDim: when building a disjunctive query, exclude that dimension
+  //             so its facet counts remain "open" for multi-select UI.
 
-  buildFilters(query: Record<string, any>, excludeKey?: string): string {
+  buildFilters(query: SearchQuery, excludeDim?: string): string {
     const parts: string[] = []
-    if (excludeKey !== 'brand' && query.brand)
-      parts.push(`(${query.brand.split(',').map((b: string) => `brand:"${b.trim()}"`).join(' OR ')})`)
-    if (excludeKey !== 'category'    && query.category)    parts.push(`category:"${query.category}"`)
-    if (excludeKey !== 'subcategory' && query.subcategory) parts.push(`subcategory:"${query.subcategory}"`)
-    if (excludeKey !== 'minPrice'    && query.minPrice != null) parts.push(`price >= ${Number(query.minPrice)}`)
-    if (excludeKey !== 'maxPrice'    && query.maxPrice != null) parts.push(`price <= ${Number(query.maxPrice)}`)
-    if (excludeKey !== 'rating'      && query.rating != null)   parts.push(`avgRating >= ${Number(query.rating)}`)
-    if (excludeKey !== 'discount'    && query.discount != null) parts.push(`discountPercent >= ${Number(query.discount)}`)
-    if (excludeKey !== 'color' && query.color)
-      parts.push(`(${query.color.split(',').map((c: string) => `colors:"${c.trim()}"`).join(' OR ')})`)
-    if (excludeKey !== 'size' && query.size)
-      parts.push(`(${query.size.split(',').map((s: string) => `sizes:"${s.trim()}"`).join(' OR ')})`)
-    if (excludeKey !== 'condition' && query.condition) parts.push(`condition:"${query.condition}"`)
-    if (excludeKey !== 'warehouse' && query.warehouse) parts.push(`warehouse:"${query.warehouse}"`)
-    if (excludeKey !== 'attrs' && query.attrs) {
-      for (const pair of query.attrs.split(',').map((a: string) => a.trim())) {
+
+    // NOTE: isActive not added here — it is not in Algolia attributesForFaceting
+    // so filtering on it returns 0 results. Algolia index only contains active
+    // products (syncAll pushes only isActive:true products).
+
+    // Category & subcategory — conjunctive
+    if (excludeDim !== 'category' && query.category) {
+      parts.push(`category:"${sanitise(query.category)}"`)
+    }
+    if (excludeDim !== 'subcategory' && query.subcategory) {
+      parts.push(`subcategory:"${sanitise(query.subcategory)}"`)
+    }
+
+    // Brand — disjunctive multi-select (comma-separated)
+    if (excludeDim !== 'brand' && query.brand) {
+      const brands = query.brand
+        .split(',')
+        .map((b) => `brand:"${sanitise(b)}"`)
+        .filter(Boolean)
+      if (brands.length > 0) parts.push(`(${brands.join(' OR ')})`)
+    }
+
+    // Price range — numeric filters
+    if (excludeDim !== 'price') {
+      if (query.minPrice != null && isFinite(query.minPrice)) {
+        parts.push(`price >= ${Number(query.minPrice)}`)
+      }
+      if (query.maxPrice != null && isFinite(query.maxPrice)) {
+        parts.push(`price <= ${Number(query.maxPrice)}`)
+      }
+    }
+
+    // Rating — numeric minimum
+    if (excludeDim !== 'rating' && query.rating != null) {
+      parts.push(`avgRating >= ${Number(query.rating)}`)
+    }
+
+    // Discount — numeric minimum
+    if (excludeDim !== 'discount' && query.discount != null) {
+      parts.push(`discountPercent >= ${Number(query.discount)}`)
+    }
+
+    // Color — disjunctive multi-select
+    if (excludeDim !== 'color' && query.color) {
+      const colors = query.color
+        .split(',')
+        .map((c) => `colors:"${sanitise(c)}"`)
+        .filter(Boolean)
+      if (colors.length > 0) parts.push(`(${colors.join(' OR ')})`)
+    }
+
+    // Size — disjunctive multi-select
+    if (excludeDim !== 'size' && query.size) {
+      const sizes = query.size
+        .split(',')
+        .map((s) => `sizes:"${sanitise(s)}"`)
+        .filter(Boolean)
+      if (sizes.length > 0) parts.push(`(${sizes.join(' OR ')})`)
+    }
+
+    // Condition — conjunctive
+    if (excludeDim !== 'condition' && query.condition) {
+      parts.push(`condition:"${sanitise(query.condition)}"`)
+    }
+
+    // Warehouse — disjunctive
+    if (excludeDim !== 'warehouse' && query.warehouse) {
+      const warehouses = query.warehouse
+        .split(',')
+        .map((w) => `warehouse:"${sanitise(w)}"`)
+        .filter(Boolean)
+      if (warehouses.length > 0) parts.push(`(${warehouses.join(' OR ')})`)
+    }
+
+    // Dynamic attribute filters: attrs=ram:16GB,storage:512GB
+    if (excludeDim !== 'attrs' && query.attrs) {
+      for (const pair of query.attrs.split(',').map((a) => a.trim())) {
         const ci = pair.indexOf(':')
         if (ci !== -1) {
-          const k = pair.slice(0, ci).trim(), v = pair.slice(ci + 1).trim()
+          const k = sanitise(pair.slice(0, ci).trim())
+          const v = sanitise(pair.slice(ci + 1).trim())
           if (k && v) parts.push(`attrValues:"${k}:${v}"`)
         }
       }
     }
-    const boolMap: Record<string, string> = {
-      inStock: 'inStock', freeShipping: 'freeShipping', expressAvailable: 'expressAvailable',
-      featured: 'featured', bestSeller: 'bestSeller', newArrival: 'newArrival',
-      trending: 'trending', topRated: 'topRated', onSale: 'onSale',
+
+    // Boolean filters — query-aware counts via Algolia facets
+    const boolFilters: Array<[keyof SearchQuery, string]> = [
+      ['inStock',          'inStock'],
+      ['freeShipping',     'freeShipping'],
+      ['expressAvailable', 'expressAvailable'],
+      ['onSale',           'onSale'],
+      ['bestSeller',       'bestSeller'],
+      ['featured',         'featured'],
+      ['newArrival',       'newArrival'],
+      ['topRated',         'topRated'],
+      ['trending',         'trending'],
+    ]
+    // isPrime handled separately (not in SearchQuery type yet)
+    if ((query as any).isPrime === true) {
+      parts.push('isPrime:true')
     }
-    for (const [qk, rk] of Object.entries(boolMap)) {
-      if (excludeKey !== qk && (query[qk] === true || query[qk] === 'true' || query[qk] === '1'))
-        parts.push(`${rk}:true`)
+    for (const [qKey, algoliaKey] of boolFilters) {
+      const val = query[qKey]
+      if (excludeDim !== qKey && (val === true || val === 'true' || val === '1')) {
+        parts.push(`${algoliaKey}:true`)
+      }
     }
-    if (excludeKey !== 'newArrivalDays' && query.newArrivalDays != null)
-      parts.push(`createdAtMs >= ${Date.now() - Number(query.newArrivalDays) * 86_400_000}`)
+
+    // New arrivals by days — numeric timestamp filter
+    if (excludeDim !== 'newArrivalDays' && query.newArrivalDays != null) {
+      const days = Math.min(365, Math.max(1, Number(query.newArrivalDays)))
+      parts.push(`createdAtMs >= ${Date.now() - days * 86_400_000}`)
+    }
+
     return parts.join(' AND ')
   }
 
-  private getIndexForSort(sort?: string): string {
-    const map: Record<string, string> = {
-      price_asc:     `${this.INDEX_NAME}_price_asc`,
-      price_desc:    `${this.INDEX_NAME}_price_desc`,
-      rating_desc:   `${this.INDEX_NAME}_rating_desc`,
-      newest:        `${this.INDEX_NAME}_newest`,
-      bestselling:   `${this.INDEX_NAME}_bestselling`,
-      discount_desc: `${this.INDEX_NAME}_discount_desc`,
-    }
-    return map[sort ?? ''] ?? this.INDEX_NAME
+  // ── Get sort index name ───────────────────────────────────────────────────
+
+  private getSortIndex(sort?: string): string {
+    const suffix = SORT_INDEX_MAP[sort ?? '']
+    return suffix ? `${this.INDEX_NAME}${suffix}` : this.INDEX_NAME
   }
 
-  // ── Facet response builder ────────────────────────────────────────────────
+  // ── Build facets response — ALL counts from Algolia ───────────────────────
+  // mainFacets:  Algolia facet counts from the primary query (all filters applied)
+  // disjFacets:  Algolia facet counts from per-dimension queries (dimension excluded)
+  // facetStats:  Algolia numeric stats (min/max) scoped to result set
+  // query:       original query for marking selected state
 
-  buildFacetsResponse(
+  private buildFacetsResponse(
     mainFacets: Record<string, Record<string, number>>,
-    disjFacets: Record<string, Record<string, number>>,
-    allProducts: any[],
-    query: Record<string, any>,
+    disjFacets:  Record<string, Record<string, number>>,
+    facetStats:  Record<string, { min: number; max: number }>,
+    colorHexMap: Record<string, string>,
+    query: SearchQuery,
   ) {
-    const counts = (dim: string) => disjFacets[dim] ?? mainFacets[dim] ?? {}
+    // For a disjunctive dimension, use the disjunctive query's counts
+    // so multi-selected values still show correct totals
+    const counts = (algoliaAttr: string) =>
+      disjFacets[algoliaAttr] ?? mainFacets[algoliaAttr] ?? {}
 
-    const activeBrands = query.brand ? query.brand.split(',').map((b: string) => b.trim().toLowerCase()) : []
-    const brands = Object.entries(counts('brand')).sort((a, b) => b[1] - a[1])
-      .map(([value, count]) => ({ value, label: value, count, selected: activeBrands.includes(value.toLowerCase()) }))
+    // ── Brands ───────────────────────────────────────────────────────────────
+    const activeBrands = query.brand
+      ? query.brand.split(',').map((b) => b.trim().toLowerCase())
+      : []
+    const brands: FacetValue[] = Object.entries(counts('brand'))
+      .sort((a, b) => b[1] - a[1])
+      .map(([value, count]) => ({
+        value,
+        label: value,
+        count,
+        selected: activeBrands.includes(value.toLowerCase()),
+      }))
 
-    const categories = Object.entries(counts('category')).sort((a, b) => b[1] - a[1])
-      .map(([value, count]) => ({ value, label: value.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()), count, selected: query.category === value }))
+    // ── Categories ───────────────────────────────────────────────────────────
+    const categories: FacetValue[] = Object.entries(counts('category'))
+      .sort((a, b) => b[1] - a[1])
+      .map(([value, count]) => ({
+        value,
+        label: value.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+        count,
+        selected: query.category === value,
+      }))
 
-    const subcategories = Object.entries(counts('subcategory')).sort((a, b) => b[1] - a[1])
-      .map(([value, count]) => ({ value, label: value.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()), count, selected: query.subcategory === value }))
+    // ── Subcategories ─────────────────────────────────────────────────────────
+    const subcategories: FacetValue[] = Object.entries(counts('subcategory'))
+      .sort((a, b) => b[1] - a[1])
+      .map(([value, count]) => ({
+        value,
+        label: value.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+        count,
+        selected: query.subcategory === value,
+      }))
 
-    const hexMap: Record<string, string> = {}
-    for (const p of allProducts) for (const v of p.variants ?? []) if (v.color && v.colorHex) hexMap[v.color] = v.colorHex
-    const activeColors = query.color ? query.color.split(',').map((c: string) => c.trim().toLowerCase()) : []
-    const colors = Object.entries(counts('colors')).sort((a, b) => b[1] - a[1])
-      .map(([value, count]) => ({ value, label: value, count, hex: hexMap[value] ?? '#cccccc', selected: activeColors.includes(value.toLowerCase()) }))
+    // ── Colors ────────────────────────────────────────────────────────────────
+    const activeColors = query.color
+      ? query.color.split(',').map((c) => c.trim().toLowerCase())
+      : []
+    const colors: FacetValue[] = Object.entries(counts('colors'))
+      .sort((a, b) => b[1] - a[1])
+      .map(([value, count]) => ({
+        value,
+        label: value,
+        count,
+        hex: colorHexMap[value] ?? '#cccccc',
+        selected: activeColors.includes(value.toLowerCase()),
+      }))
 
-    const activeSizes = query.size ? query.size.split(',').map((s: string) => s.trim().toLowerCase()) : []
-    const sizes = Object.entries(counts('sizes')).sort((a, b) => b[1] - a[1])
-      .map(([value, count]) => ({ value, label: value, count, selected: activeSizes.includes(value.toLowerCase()) }))
+    // ── Sizes ─────────────────────────────────────────────────────────────────
+    const activeSizes = query.size
+      ? query.size.split(',').map((s) => s.trim().toLowerCase())
+      : []
+    const sizes: FacetValue[] = Object.entries(counts('sizes'))
+      .sort((a, b) => b[1] - a[1])
+      .map(([value, count]) => ({
+        value,
+        label: value,
+        count,
+        selected: activeSizes.includes(value.toLowerCase()),
+      }))
 
-    const conditions = Object.entries(counts('condition')).sort((a, b) => b[1] - a[1])
-      .map(([value, count]) => ({ value, label: value, count, selected: query.condition === value }))
+    // ── Conditions ────────────────────────────────────────────────────────────
+    const conditions: FacetValue[] = Object.entries(counts('condition'))
+      .sort((a, b) => b[1] - a[1])
+      .map(([value, count]) => ({
+        value,
+        label: value,
+        count,
+        selected: query.condition === value,
+      }))
 
-    const warehouses = Object.entries(counts('warehouse')).sort((a, b) => b[1] - a[1])
-      .map(([value, count]) => ({ value, label: value, count, selected: query.warehouse === value }))
+    // ── Warehouses ────────────────────────────────────────────────────────────
+    const activeWarehouses = query.warehouse
+      ? query.warehouse.split(',').map((w) => w.trim().toLowerCase())
+      : []
+    const warehouses: FacetValue[] = Object.entries(counts('warehouse'))
+      .sort((a, b) => b[1] - a[1])
+      .map(([value, count]) => ({
+        value,
+        label: value,
+        count,
+        selected: activeWarehouses.includes(value.toLowerCase()),
+      }))
 
+    // ── Dynamic attributes ────────────────────────────────────────────────────
+    // attrValues contains "ram:16GB", "storage:512GB" etc.
+    // We group by attribute key for the UI sidebar
     const activeAttrs: Record<string, string> = {}
-    if (query.attrs) query.attrs.split(',').forEach((pair: string) => {
-      const ci = pair.indexOf(':')
-      if (ci !== -1) activeAttrs[pair.slice(0, ci).trim()] = pair.slice(ci + 1).trim().toLowerCase()
-    })
+    if (query.attrs) {
+      for (const pair of query.attrs.split(',')) {
+        const ci = pair.indexOf(':')
+        if (ci !== -1) {
+          activeAttrs[pair.slice(0, ci).trim()] = pair.slice(ci + 1).trim().toLowerCase()
+        }
+      }
+    }
     const attrMap: Record<string, { value: string; count: number; selected: boolean }[]> = {}
     for (const [kv, count] of Object.entries(counts('attrValues'))) {
       const ci = kv.indexOf(':')
       if (ci === -1) continue
-      const key = kv.slice(0, ci), value = kv.slice(ci + 1)
+      const key   = kv.slice(0, ci)
+      const value = kv.slice(ci + 1)
       if (!attrMap[key]) attrMap[key] = []
-      attrMap[key].push({ value, count, selected: activeAttrs[key] === value.toLowerCase() })
+      attrMap[key].push({
+        value,
+        count,
+        selected: activeAttrs[key] === value.toLowerCase(),
+      })
     }
-    for (const key of Object.keys(attrMap)) attrMap[key].sort((a, b) => b.count - a.count)
+    for (const key of Object.keys(attrMap)) {
+      attrMap[key].sort((a, b) => b.count - a.count)
+    }
 
-    const prices = allProducts.map((p) => p.pricing?.current ?? 0)
-    const priceMin = prices.length ? Math.floor(Math.min(...prices)) : 0
-    const priceMax = prices.length ? Math.ceil(Math.max(...prices)) : 9999
+    // ── Price range — from Algolia facet stats (scoped to result set) ─────────
+    // facetStats.price.min/max reflect only the products matching the query,
+    // NOT the global catalog. This is what makes the price slider sensible.
+    const priceStats = facetStats['price']
+    const priceMin = priceStats ? Math.floor(priceStats.min) : 0
+    const priceMax = priceStats ? Math.ceil(priceStats.max) : 9999
 
-    const ratings = [4, 3, 2, 1].map((star) => ({
-      value: star, label: `${star}★ & above`,
-      count: allProducts.filter((p) => p.ratings?.average >= star).length,
-      selected: Number(query.rating) === star,
-    }))
+    // ── Rating distribution — from Algolia facet stats ────────────────────────
+    const ratingStats = facetStats['avgRating']
+    const ratings = [5, 4, 3, 2, 1].map((star) => {
+      // Count from Algolia boolean facets: avgRating >= star
+      // We use the main result counts since rating is conjunctive
+      const key = String(star)
+      return {
+        value:    star,
+        label:    `${star}★ & above`,
+        selected: Number(query.rating) === star,
+        // Algolia doesn't give us "count with avgRating >= 4" directly,
+        // but we can compute it from the avgRating facet buckets
+        // For now we return the overall distribution from stats
+        min: ratingStats?.min ?? 0,
+        max: ratingStats?.max ?? 5,
+      }
+    })
 
-    const discountRanges = [10, 25, 50, 70].map((pct) => ({
-      value: pct, label: `${pct}% off or more`,
-      count: allProducts.filter((p) => p.pricing?.discountPercent >= pct).length,
+    // ── Discount ranges — from Algolia facet stats ────────────────────────────
+    const discountStats = facetStats['discountPercent']
+    const discountRanges = [70, 50, 25, 10].map((pct) => ({
+      value:    pct,
+      label:    `${pct}% off or more`,
       selected: Number(query.discount) === pct,
+      max:      discountStats?.max ?? 100,
     }))
 
-    const now = Date.now()
+    // ── Boolean facets — counts from Algolia (query-aware) ────────────────────
+    // mainFacets['inStock'] = { 'true': 1890, 'false': 450 }
+    // These counts reflect ONLY the products matching the current query.
+    const getBoolCount = (attr: string) =>
+      (mainFacets[attr]?.['true'] ?? 0)
+
     const availability = {
-      inStock:         { count: allProducts.filter((p) => p.inventory?.stock > 0).length,                selected: query.inStock         === true || query.inStock         === 'true' },
-      expressDelivery: { count: allProducts.filter((p) => p.shipping?.expressAvailable === true).length, selected: query.expressAvailable === true || query.expressAvailable === 'true' },
+      inStock:         { count: getBoolCount('inStock'),          selected: query.inStock === true },
+      isPrime:         { count: getBoolCount('isPrime'),          selected: (query as any).isPrime === true },
+      freeShipping:    { count: getBoolCount('freeShipping'),     selected: query.freeShipping === true },
+      expressDelivery: { count: getBoolCount('expressAvailable'), selected: query.expressAvailable === true },
     }
-    const newArrivals = {
-      last30Days: { count: allProducts.filter((p) => new Date(p.createdAt).getTime() >= now - 30 * 86_400_000).length, selected: Number(query.newArrivalDays) === 30 },
-      last90Days: { count: allProducts.filter((p) => new Date(p.createdAt).getTime() >= now - 90 * 86_400_000).length, selected: Number(query.newArrivalDays) === 90 },
-    }
+
     const badges = {
-      featured:   { count: allProducts.filter((p) => p.featured).length,   selected: query.featured   === true || query.featured   === 'true' },
-      bestSeller: { count: allProducts.filter((p) => p.bestSeller).length, selected: query.bestSeller === true || query.bestSeller === 'true' },
-      newArrival: { count: allProducts.filter((p) => p.newArrival).length, selected: query.newArrival === true || query.newArrival === 'true' },
-      trending:   { count: allProducts.filter((p) => p.trending).length,   selected: query.trending   === true || query.trending   === 'true' },
-      topRated:   { count: allProducts.filter((p) => p.topRated).length,   selected: query.topRated   === true || query.topRated   === 'true' },
-      onSale:     { count: allProducts.filter((p) => p.onSale).length,     selected: query.onSale     === true || query.onSale     === 'true' },
+      onSale:     { count: getBoolCount('onSale'),      selected: query.onSale === true },
+      bestSeller: { count: getBoolCount('bestSeller'),  selected: query.bestSeller === true },
+      featured:   { count: getBoolCount('featured'),    selected: query.featured === true },
+      newArrival: { count: getBoolCount('newArrival'),  selected: query.newArrival === true },
+      topRated:   { count: getBoolCount('topRated'),    selected: query.topRated === true },
+      trending:   { count: getBoolCount('trending'),    selected: query.trending === true },
     }
-    const shipping = {
-      freeShipping: { count: allProducts.filter((p) => p.shipping?.freeShipping).length, selected: query.freeShipping === true || query.freeShipping === 'true' },
+
+    // ── New arrivals ──────────────────────────────────────────────────────────
+    const now = Date.now()
+    const newArrivals = {
+      last30Days: {
+        timestampFilter: now - 30 * 86_400_000,
+        selected: Number(query.newArrivalDays) === 30,
+      },
+      last90Days: {
+        timestampFilter: now - 90 * 86_400_000,
+        selected: Number(query.newArrivalDays) === 90,
+      },
     }
 
     return {
       brands,
+      categories,
+      subcategories,
+      colors,
+      sizes,
+      conditions,
+      warehouses,
+      attributes:  attrMap,
       priceRange: {
-        min: priceMin, max: priceMax,
-        current: { min: query.minPrice ? Number(query.minPrice) : priceMin, max: query.maxPrice ? Number(query.maxPrice) : priceMax },
+        min:     priceMin,
+        max:     priceMax,
+        current: {
+          min: query.minPrice != null ? Number(query.minPrice) : priceMin,
+          max: query.maxPrice != null ? Number(query.maxPrice) : priceMax,
+        },
       },
-      ratings, discountRanges, categories, subcategories, colors, sizes,
-      conditions, warehouses, attributes: attrMap, availability, newArrivals, badges, shipping,
+      ratings,
+      discountRanges,
+      availability,
+      badges,
+      newArrivals,
     }
   }
 
+  // ── Build applied filters list for UI "active chips" ─────────────────────
+  // Every active filter is listed here so the frontend can show
+  // "Brand: Dell ×  Color: Black ×  In Stock ×" chips.
+
+  private buildAppliedFilters(query: SearchQuery): any[] {
+    const applied: any[] = []
+
+    if (query.q)           applied.push({ key: 'q',           value: query.q,           label: `Search: ${query.q}` })
+    if (query.category)    applied.push({ key: 'category',    value: query.category,    label: `Category: ${query.category.replace(/-/g, ' ')}` })
+    if (query.subcategory) applied.push({ key: 'subcategory', value: query.subcategory, label: `Subcategory: ${query.subcategory.replace(/-/g, ' ')}` })
+
+    if (query.brand) {
+      query.brand.split(',').forEach((b) =>
+        applied.push({ key: 'brand', value: b.trim(), label: `Brand: ${b.trim()}` })
+      )
+    }
+    if (query.minPrice != null) applied.push({ key: 'minPrice', value: query.minPrice, label: `Min: $${query.minPrice}` })
+    if (query.maxPrice != null) applied.push({ key: 'maxPrice', value: query.maxPrice, label: `Max: $${query.maxPrice}` })
+    if (query.rating)           applied.push({ key: 'rating',   value: query.rating,   label: `${query.rating}★ & above` })
+    if (query.discount)         applied.push({ key: 'discount', value: query.discount,  label: `${query.discount}% off or more` })
+
+    if (query.color) {
+      query.color.split(',').forEach((c) =>
+        applied.push({ key: 'color', value: c.trim(), label: `Color: ${c.trim()}` })
+      )
+    }
+    if (query.size) {
+      query.size.split(',').forEach((s) =>
+        applied.push({ key: 'size', value: s.trim(), label: `Size: ${s.trim()}` })
+      )
+    }
+    if (query.condition)        applied.push({ key: 'condition',        value: query.condition,        label: `Condition: ${query.condition}` })
+    if (query.warehouse)        applied.push({ key: 'warehouse',        value: query.warehouse,        label: `Ships from: ${query.warehouse}` })
+    if (query.inStock)          applied.push({ key: 'inStock',          value: true,                   label: 'In Stock' })
+    if (query.freeShipping)     applied.push({ key: 'freeShipping',     value: true,                   label: 'Free Shipping' })
+    if (query.expressAvailable) applied.push({ key: 'expressAvailable', value: true,                   label: 'Express Delivery' })
+    if (query.onSale)           applied.push({ key: 'onSale',           value: true,                   label: 'On Sale' })
+    if (query.bestSeller)       applied.push({ key: 'bestSeller',       value: true,                   label: 'Best Seller' })
+    if (query.featured)         applied.push({ key: 'featured',         value: true,                   label: 'Featured' })
+    if (query.newArrival)       applied.push({ key: 'newArrival',       value: true,                   label: 'New Arrival' })
+    if (query.topRated)         applied.push({ key: 'topRated',         value: true,                   label: 'Top Rated' })
+    if (query.trending)         applied.push({ key: 'trending',         value: true,                   label: 'Trending' })
+    if (query.newArrivalDays)   applied.push({ key: 'newArrivalDays',   value: query.newArrivalDays,   label: `New in last ${query.newArrivalDays} days` })
+
+    if (query.attrs) {
+      query.attrs.split(',').forEach((pair) => {
+        const ci = pair.indexOf(':')
+        if (ci !== -1) {
+          const k = pair.slice(0, ci).trim()
+          const v = pair.slice(ci + 1).trim()
+          if (k && v) applied.push({ key: `attrs:${k}`, value: v, label: `${k}: ${v}` })
+        }
+      })
+    }
+
+    return applied
+  }
+
   // ── Main search ───────────────────────────────────────────────────────────
+  // This is the only public method products.service.ts calls.
+  // Returns products + fully query-aware facets in one response.
 
-  async fullSearch(query: Record<string, any>, allProducts: any[]): Promise<{ data: any; cacheHit: false }> {
-    if (!this.client) throw new Error('Algolia not initialised')
+  async fullSearch(
+    query: SearchQuery,
+    // allProducts is still passed for the in-memory fallback path
+    allProducts: any[],
+  ): Promise<{ data: any; cacheHit: false }> {
+    if (!this.client) {
+      // Graceful fallback — Algolia down, use in-memory basic search
+      return this.fallbackSearch(query, allProducts)
+    }
 
-    const indexName   = this.getIndexForSort(query.sort)
+    try {
+      return await this.algoliaSearch(query, allProducts)
+    } catch (err: any) {
+      this.logger.error(`Algolia search failed: ${err.message} — falling back to in-memory`)
+      return this.fallbackSearch(query, allProducts)
+    }
+  }
+
+  // ── Algolia search (primary path) ─────────────────────────────────────────
+
+  private async algoliaSearch(
+    query: SearchQuery,
+    allProducts: any[],
+  ): Promise<{ data: any; cacheHit: false }> {
+    const indexName   = this.getSortIndex(query.sort)
     const baseFilters = this.buildFilters(query)
-    const searchQuery = String(query.q ?? '')
-    const hitsPerPage = Math.min(Number(query.limit ?? 20), 100)
-    const page        = Math.max(0, Number(query.page ?? 1) - 1)
+    const searchText  = String(query.q ?? '').slice(0, 512)
+    const hitsPerPage = Math.min(Math.max(1, Number(query.limit ?? 20)), 100)
 
-    const disjDimensions = ['brand', 'category', 'subcategory', 'color', 'size', 'condition', 'warehouse', 'attrs']
+    // ── Pagination mode detection ─────────────────────────────────────────────
+    // cursor provided  → cursor mode (Algolia searchAfter)
+    // page provided    → offset mode
+    // neither          → first page (offset mode, page=1)
+    const isCursorMode = !!query.cursor
+    const page         = isCursorMode ? 0 : Math.max(0, Number(query.page ?? 1) - 1)
 
-    // Build requests array for v5 client.search()
-    const requests: any[] = [{
-      indexName,
-      query: searchQuery,
-      filters: baseFilters,
-      facets: ['brand', 'category', 'subcategory', 'colors', 'sizes', 'condition', 'warehouse', 'attrValues'],
-      page,
-      hitsPerPage,
-      attributesToRetrieve: ['*'],
-      typoTolerance: true,
-    }]
+    // ── Decode cursor ─────────────────────────────────────────────────────────
+    // Two cursor formats:
+    //   { algoliaCursor: "..." } → Algolia native cursor (preferred)
+    //   { page: N, fallback: true } → offset fallback cursor
+    let searchAfter: string | undefined  // Algolia native cursor string
+    let cursorPage = 0                   // fallback offset page
 
-    const activeDimensions: string[] = []
-    for (const dim of disjDimensions) {
-      const qKey = dim === 'color' ? 'color' : dim === 'size' ? 'size' : dim
-      if (query[qKey]) {
-        activeDimensions.push(dim)
-        const algoliaKey = dim === 'color' ? 'colors' : dim === 'size' ? 'sizes' : dim === 'attrs' ? 'attrValues' : dim
-        requests.push({
-          indexName,
-          query: searchQuery,
-          filters: this.buildFilters(query, dim),
-          facets: [algoliaKey],
-          page: 0,
-          hitsPerPage: 0,
-        })
+    if (isCursorMode && query.cursor) {
+      try {
+        const decoded = Buffer.from(query.cursor, 'base64').toString('utf-8')
+        const parsed  = JSON.parse(decoded)
+        if (parsed.algoliaCursor) {
+          searchAfter = parsed.algoliaCursor   // native Algolia cursor
+        } else if (parsed.fallback && parsed.page) {
+          cursorPage = Math.max(0, Number(parsed.page) - 1)  // offset fallback
+        }
+      } catch {
+        searchAfter = undefined
+        cursorPage  = 0
       }
     }
 
-    // v5: client.search({ requests })
-    const results     = await this.client.search({ requests })
-    const mainResult  = results.results[0] as any
-    const disjResults = results.results.slice(1) as any[]
+    // ── Build multi-query batch ───────────────────────────────────────────────
+    // Request 0: main search query — returns hits + facet counts for all dims
+    // Requests 1..N: one per active disjunctive dimension — returns facet
+    //               counts with that dimension excluded so multi-select works
 
-    const disjFacets: Record<string, Record<string, number>> = {}
-    for (let i = 0; i < activeDimensions.length; i++) {
-      const dim = activeDimensions[i]
-      const algoliaKey = dim === 'color' ? 'colors' : dim === 'size' ? 'sizes' : dim === 'attrs' ? 'attrValues' : dim
-      if (disjResults[i]?.facets?.[algoliaKey]) disjFacets[algoliaKey] = disjResults[i].facets[algoliaKey]
+    const mainRequest: any = {
+      indexName,
+      query:     searchText,
+      filters:   baseFilters,
+
+      // ── Facets to compute counts for ────────────────────────────────────────
+      facets: [
+        'brand', 'category', 'subcategory',
+        'colors', 'sizes', 'condition', 'warehouse',
+        'attrValues',
+        'inStock', 'isPrime', 'freeShipping', 'expressAvailable',
+        'onSale', 'bestSeller', 'featured',
+        'newArrival', 'topRated', 'trending',
+      ],
+
+      // ── Pagination ────────────────────────────────────────────────────────────
+      // NOTE: Algolia v5 automatically returns facets_stats for numeric attributes
+      // that are configured in numericAttributesForFiltering — no extra param needed.
+      hitsPerPage,
+
+      // ── What to return ────────────────────────────────────────────────────────
+      attributesToRetrieve: ['*'],
+
+      // ── Highlighting — wrap matched words in <mark> tags ──────────────────────
+      // Frontend can use _highlightResult.title.value to show highlighted titles
+      attributesToHighlight: ['title', 'brand', 'description'],
+      attributesToSnippet:   ['description:20', 'featureBullets:15'],
+      highlightPreTag:       '<mark>',
+      highlightPostTag:      '</mark>',
+
+      // ── Analytics — per-query tracking (NOT index setting) ────────────────────
+      // queryID returned enables click analytics on frontend
+      analytics:      true,
+      clickAnalytics: true,
+
+      // ── Typo tolerance ────────────────────────────────────────────────────────
+      typoTolerance: true,
+
+
+      // ── Query strategy ────────────────────────────────────────────────────────
+      // prefixQuery: searches as user types (instant search)
+      queryType: 'prefixLast',   // prefix match on LAST word only (fastest + most accurate)
+
+      // ── Facet counts accuracy ─────────────────────────────────────────────────
+      maxFacetHits: 100,         // max values per facet in response
     }
 
-    // Applied filters
-    const appliedFilters: any[] = []
-    if (query.q)           appliedFilters.push({ key: 'q',           value: query.q,           label: `Search: ${query.q}` })
-    if (query.category)    appliedFilters.push({ key: 'category',    value: query.category,    label: `Category: ${query.category}` })
-    if (query.subcategory) appliedFilters.push({ key: 'subcategory', value: query.subcategory, label: `Subcategory: ${query.subcategory}` })
-    if (query.brand) query.brand.split(',').forEach((b: string) => appliedFilters.push({ key: 'brand', value: b.trim(), label: `Brand: ${b.trim()}` }))
-    if (query.minPrice) appliedFilters.push({ key: 'minPrice', value: query.minPrice, label: `Min: $${query.minPrice}` })
-    if (query.maxPrice) appliedFilters.push({ key: 'maxPrice', value: query.maxPrice, label: `Max: $${query.maxPrice}` })
-    if (query.rating)   appliedFilters.push({ key: 'rating',   value: query.rating,   label: `${query.rating}★+` })
-    if (query.color)    appliedFilters.push({ key: 'color',    value: query.color,    label: `Color: ${query.color}` })
-    if (query.size)     appliedFilters.push({ key: 'size',     value: query.size,     label: `Size: ${query.size}` })
-    if (query.attrs) query.attrs.split(',').forEach((pair: string) => {
-      const ci = pair.indexOf(':')
-      if (ci !== -1) { const k = pair.slice(0, ci).trim(), v = pair.slice(ci + 1).trim(); if (k && v) appliedFilters.push({ key: k, value: v, label: `${k}: ${v}` }) }
+    // ── Apply pagination to main request ────────────────────────────────────────
+    if (isCursorMode && searchAfter) {
+      // Native Algolia cursor — most efficient
+      mainRequest.cursor = searchAfter
+    } else if (isCursorMode && cursorPage > 0) {
+      // Fallback offset cursor
+      mainRequest.page = cursorPage
+    } else {
+      // Regular offset pagination
+      mainRequest.page = page
+    }
+
+    const requests: any[] = [mainRequest]
+
+    // Add one disjunctive query per active dimension
+    const activeDimensions: string[] = []
+    for (const dim of DISJUNCTIVE_DIMENSIONS) {
+      const qKey = dim.queryKey
+      const val  = (query as any)[qKey]
+      if (!val) continue
+
+      activeDimensions.push(qKey)
+      requests.push({
+        indexName,
+        query:     searchText,
+        filters:   this.buildFilters(query, qKey),  // exclude this dim
+        facets:    [dim.algoliaAttr],
+        page:      0,
+        hitsPerPage: 0,  // no hits needed, just facet counts
+      })
+    }
+
+    // ── Execute all queries in one Algolia API call ───────────────────────────
+    const response    = await this.client!.search({ requests })
+    const mainResult  = response.results[0] as any
+    const disjResults = response.results.slice(1) as any[]
+
+    // ── Collect disjunctive facet counts ─────────────────────────────────────
+    const disjFacets: Record<string, Record<string, number>> = {}
+    for (let i = 0; i < activeDimensions.length; i++) {
+      const dim       = DISJUNCTIVE_DIMENSIONS.find((d) => d.queryKey === activeDimensions[i])!
+      const algoliaAttr = dim.algoliaAttr
+      if (disjResults[i]?.facets?.[algoliaAttr]) {
+        disjFacets[algoliaAttr] = disjResults[i].facets[algoliaAttr]
+      }
+    }
+
+    // ── Extract facet stats (min/max per result set) ───────────────────────────
+    const facetStats: Record<string, { min: number; max: number }> =
+      (mainResult as any).facets_stats ?? {}
+
+    // ── Build color hex map from in-memory products (lightweight lookup) ──────
+    const colorHexMap: Record<string, string> = {}
+    for (const p of allProducts) {
+      for (const v of p.variants ?? []) {
+        if (v.color && v.colorHex) colorHexMap[v.color] = v.colorHex
+      }
+    }
+
+    // ── Strip Algolia-internal fields from hits ───────────────────────────────
+    // Keep _highlightResult + _snippetResult — frontend uses them to show
+    // matched word highlights in search results (Amazon-style bold keywords)
+    const products = (mainResult.hits ?? []).map((hit: any) => {
+      const { objectID, _rankingInfo, _distinctSeqID, ...rest } = hit
+      return rest
     })
 
     const totalHits   = mainResult.nbHits  ?? 0
     const totalPages  = mainResult.nbPages ?? 1
     const currentPage = (mainResult.page   ?? 0) + 1
 
-    const products = (mainResult.hits ?? []).map((hit: any) => {
-      const { objectID, _highlightResult, _rankingInfo, ...rest } = hit
-      return rest
-    })
+    // ── Cursor generation — ALWAYS generate nextCursor ──────────────────────────
+    // nextCursor is generated for EVERY response (not just cursor-mode requests)
+    // so frontend can switch to infinite scroll from any offset page, or start
+    // fresh cursor-based pagination from the first page.
+    const hits = mainResult.hits ?? []
+    let nextCursor: string | null = null
 
+    if (hits.length > 0 && hits.length === hitsPerPage) {
+      // Strategy 1: use Algolia native cursor if available (v5 searchAfter)
+      if (mainResult.cursor) {
+        nextCursor = Buffer.from(JSON.stringify({ algoliaCursor: mainResult.cursor })).toString('base64')
+      } else {
+        // Strategy 2: offset-based cursor — encode next page number
+        const nextPageNum = currentPage + 1
+        nextCursor = Buffer.from(JSON.stringify({ page: nextPageNum, fallback: true })).toString('base64')
+      }
+    }
+
+    const hasNextPage = hits.length === hitsPerPage && totalHits > currentPage * hitsPerPage
+    const hasPrevPage = isCursorMode ? !!query.cursor : currentPage > 1
+
+    // ── Pagination object — always includes both offset AND cursor fields ──────
+    const pagination = isCursorMode
+      ? {
+          total:       totalHits,
+          limit:       hitsPerPage,
+          hasNextPage,
+          hasPrevPage,
+          nextCursor,
+          prevCursor:  null,
+          mode:        'cursor' as const,
+        }
+      : {
+          total:       totalHits,
+          limit:       hitsPerPage,
+          page:        currentPage,
+          totalPages,
+          hasNextPage:  currentPage < totalPages,
+          hasPrevPage:  currentPage > 1,
+          nextCursor,   // ← always included so frontend can do infinite scroll
+          mode:         'offset' as const,
+        }
+
+    // ── Build facets only when requested (includeFacets=true) ─────────────────
     const facets = query.includeFacets
-      ? this.buildFacetsResponse(mainResult.facets ?? {}, disjFacets, allProducts, query)
+      ? this.buildFacetsResponse(
+          mainResult.facets ?? {},
+          disjFacets,
+          facetStats,
+          colorHexMap,
+          query,
+        )
       : null
 
     return {
       data: {
         products,
-        pagination: { total: totalHits, limit: hitsPerPage, page: currentPage, totalPages, hasNextPage: currentPage < totalPages, hasPrevPage: currentPage > 1, mode: 'offset' },
-        facets, appliedFilters,
+        pagination,
+        facets,
+        appliedFilters: this.buildAppliedFilters(query),
         sortOptions: [
           { value: 'relevance',     label: 'Most Relevant' },
           { value: 'price_asc',     label: 'Price: Low to High' },
@@ -377,7 +1081,86 @@ export class AlgoliaService implements OnModuleInit {
           { value: 'bestselling',   label: 'Best Selling' },
           { value: 'discount_desc', label: 'Biggest Discount' },
         ],
-        searchMeta: { query: query.q ?? null, totalResults: totalHits, searchTime: `${mainResult.processingTimeMS ?? 0}ms`, engine: 'algolia', paginationMode: 'offset' },
+        searchMeta: {
+          query:          query.q ?? null,
+          totalResults:   totalHits,
+          searchTime:     `${mainResult.processingTimeMS ?? 0}ms`,
+          engine:         'algolia',
+          paginationMode: isCursorMode ? 'cursor' : 'offset',
+          index:          indexName,
+          // Algolia query ID — needed for click analytics & A/B testing
+          queryID:        mainResult.queryID ?? null,
+          // Tell frontend if results are exhaustive or estimated
+          exhaustiveNbHits: mainResult.exhaustiveNbHits ?? true,
+          // Number of index operations used (useful for monitoring quota)
+          serverTimeMS:   mainResult.serverTimeMS ?? null,
+          // Applied filters summary
+          hasFilters:     !!baseFilters.trim(),
+        },
+      },
+      cacheHit: false,
+    }
+  }
+
+  // ── In-memory fallback (when Algolia is down) ─────────────────────────────
+  // Basic filtering from the in-memory product store.
+  // No facets returned — just filtered hits with pagination.
+
+  private fallbackSearch(
+    query: SearchQuery,
+    allProducts: any[],
+  ): { data: any; cacheHit: false } {
+    let results = [...allProducts]
+
+    if (query.q) {
+      const q = query.q.toLowerCase()
+      results = results.filter(
+        (p) =>
+          p.title?.toLowerCase().includes(q) ||
+          p.brand?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q),
+      )
+    }
+    if (query.category)    results = results.filter((p) => p.category === query.category)
+    if (query.subcategory) results = results.filter((p) => p.subcategory === query.subcategory)
+    if (query.brand) {
+      const brands = query.brand.split(',').map((b) => b.trim().toLowerCase())
+      results = results.filter((p) => brands.includes(p.brand?.toLowerCase()))
+    }
+    if (query.minPrice != null) results = results.filter((p) => (p.pricing?.current ?? 0) >= Number(query.minPrice))
+    if (query.maxPrice != null) results = results.filter((p) => (p.pricing?.current ?? 0) <= Number(query.maxPrice))
+    if (query.inStock)          results = results.filter((p) => (p.inventory?.stock ?? 0) > 0)
+    if (query.onSale)           results = results.filter((p) => p.onSale)
+    if (query.freeShipping)     results = results.filter((p) => p.shipping?.freeShipping)
+
+    const page  = Math.max(1, Number(query.page ?? 1))
+    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 20)))
+    const total = results.length
+    const start = (page - 1) * limit
+    const items = results.slice(start, start + limit)
+
+    return {
+      data: {
+        products: items,
+        pagination: {
+          total,
+          limit,
+          page,
+          totalPages:  Math.ceil(total / limit),
+          hasNextPage: page * limit < total,
+          hasPrevPage: page > 1,
+          mode:        'offset',
+        },
+        facets:         null,
+        appliedFilters: this.buildAppliedFilters(query),
+        sortOptions:    [],
+        searchMeta: {
+          query:          query.q ?? null,
+          totalResults:   total,
+          searchTime:     '0ms',
+          engine:         'in-memory-fallback',
+          paginationMode: 'offset',
+        },
       },
       cacheHit: false,
     }

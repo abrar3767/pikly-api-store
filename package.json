@@ -10,14 +10,16 @@
     "start": "node dist/src/main",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/src/main",
-    "generate-data": "ts-node scripts/generate-data.ts",
     "migrate": "ts-node scripts/migrate-userid.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "lint": "eslint \"src/**/*.{ts,js}\"",
     "lint:fix": "eslint \"src/**/*.{ts,js}\" --fix",
-    "format": "prettier \"src/**/*.{ts,js,json,md}\" --write"
+    "format": "prettier \"src/**/*.{ts,js,json,md}\" --write",
+    "seed-categories": "ts-node scripts/seed-categories.ts",
+    "import-amazon": "ts-node scripts/import-amazon.ts",
+    "sync-algolia": "ts-node scripts/sync-algolia.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
