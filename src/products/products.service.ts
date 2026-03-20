@@ -23,7 +23,8 @@ import { Product, ProductDocument } from '../database/product.schema'
 export class ProductsService implements OnModuleInit {
   private readonly logger = new Logger(ProductsService.name)
 
-  products: Product[] = []
+  products:         Product[] = []
+  cachedCategories: any[]    = []   // set by AppModule/CategoriesService after init
 
   constructor(
     @InjectModel(Product.name) private readonly productModel: Model<ProductDocument>,
@@ -88,20 +89,12 @@ export class ProductsService implements OnModuleInit {
     const sortedQuery = Object.keys(query as any)
       .sort()
       .reduce((acc: any, k) => { acc[k] = (query as any)[k]; return acc }, {})
-    const cacheKey = `products:list:${JSON.stringify(sortedQuery)}`
-
-    // Don't cache cursor-based requests — each cursor is a unique position
-    if (!query.cursor) {
-      const cached = this.cache.get<any>(cacheKey)
-      if (cached) return { data: cached, cacheHit: true }
-    }
-
-    const result = await this.algolia.fullSearch(query as any, this.findActiveProducts())
-
-    // Only cache offset-based results
-    if (!query.cursor) {
-      this.cache.set(cacheKey, result.data, TTL.PRODUCTS)
-    }
+    // ── NO CACHING for search results ────────────────────────────────────────
+    // Algolia is already extremely fast (1-5ms).
+    // Caching caused "sometimes correct, sometimes wrong" because stale
+    // cached results were served instead of fresh Algolia data.
+    // Algolia has its own internal caching — we don't need to double-cache.
+    const result = await this.algolia.fullSearch(query as any, this.findActiveProducts(), this.cachedCategories)
     return { data: result.data, cacheHit: false }
   }
 
@@ -152,90 +145,10 @@ export class ProductsService implements OnModuleInit {
   // ── Search suggestions ─────────────────────────────────────────────────────
 
   getSuggestions(q: string, liveCategories: any[] = []) {
-    if (!q || q.trim().length < 2) return { suggestions: [] }
-    const suggestions: any[] = []
-    const active = this.findActiveProducts()
-
-    // Product suggestions via fuzzy search
-    new Fuse(active, {
-      keys: ['title', 'brand', 'tags', 'asin'],
-      threshold: 0.3,
-      includeScore: true,
-    })
-      .search(q.trim())
-      .slice(0, 3)
-      .forEach(({ item }) => {
-        const p = item as any
-        suggestions.push({
-          type:     'product',
-          title:    p.title,
-          slug:     p.slug,
-          asin:     p.asin ?? null,
-          image:    p.media?.mainImage ?? p.media?.images?.[0]?.url ?? '',
-          price:    p.price ?? p.pricing?.current ?? null,
-          rating:   p.avgRating ?? p.ratings?.average ?? null,
-          brand:    p.brand ?? null,
-          category: p.category ?? null,
-        })
-      })
-
-    // Category suggestions
-    const cats = liveCategories.length
-      ? liveCategories
-      : [
-          { slug: 'electronics',            name: 'Electronics' },
-          { slug: 'clothing-shoes-jewelry',  name: 'Clothing, Shoes & Jewelry' },
-          { slug: 'home-kitchen',            name: 'Home & Kitchen' },
-          { slug: 'beauty-personal-care',    name: 'Beauty & Personal Care' },
-          { slug: 'sports-outdoors',         name: 'Sports & Outdoors' },
-          { slug: 'toys-games',              name: 'Toys & Games' },
-          { slug: 'books',                   name: 'Books' },
-          { slug: 'health-personal-care',    name: 'Health & Personal Care' },
-        ]
-
-    cats
-      .filter((c: any) => {
-        const name = c.name ?? c.slug ?? ''
-        const slug = c.slug ?? ''
-        return (
-          name.toLowerCase().includes(q.toLowerCase()) ||
-          slug.toLowerCase().includes(q.toLowerCase())
-        )
-      })
-      .slice(0, 2)
-      .forEach((c: any) =>
-        suggestions.push({
-          type:  'category',
-          title: c.name ?? c.slug.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
-          slug:  c.slug,
-          image: c.image ?? null,
-        }),
-      )
-
-    // Brand suggestions
-    new Fuse(
-      [...new Set(active.map((p) => (p as any).brand))].filter(Boolean).map((b) => ({ name: b })),
-      { keys: ['name'], threshold: 0.3 },
-    )
-      .search(q)
-      .slice(0, 2)
-      .forEach(({ item }) =>
-        suggestions.push({
-          type:  'brand',
-          title: (item as any).name,
-          query: `?brand=${encodeURIComponent((item as any).name)}`,
-        }),
-      )
-
-    // Query suggestion with price filter
-    suggestions.push({
-      type:  'query',
-      title: `${q} under $500`,
-      query: `?q=${encodeURIComponent(q)}&maxPrice=500`,
-    })
-
-    return { suggestions: suggestions.slice(0, 8) }
+    // Delegate to AlgoliaService — Algolia-powered with Fuse.js fallback
+    return this.algolia.getSuggestions(q, liveCategories, this.findActiveProducts())
   }
+
 
   // ── Single product ─────────────────────────────────────────────────────────
   // Accepts: slug (always), asin (B0XXXXXXXXX), or internal id (prod_XXXX)

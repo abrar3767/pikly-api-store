@@ -552,16 +552,23 @@ export class AlgoliaService implements OnModuleInit {
   // query:       original query for marking selected state
 
   private buildFacetsResponse(
-    mainFacets: Record<string, Record<string, number>>,
-    disjFacets:  Record<string, Record<string, number>>,
-    facetStats:  Record<string, { min: number; max: number }>,
-    colorHexMap: Record<string, string>,
-    query: SearchQuery,
+    mainFacets:    Record<string, Record<string, number>>,
+    disjFacets:    Record<string, Record<string, number>>,
+    facetStats:    Record<string, { min: number; max: number }>,
+    colorHexMap:   Record<string, string>,
+    query:         SearchQuery,
+    categoryLookup: Record<string, string> = {},  // slug → proper name
   ) {
     // For a disjunctive dimension, use the disjunctive query's counts
     // so multi-selected values still show correct totals
     const counts = (algoliaAttr: string) =>
       disjFacets[algoliaAttr] ?? mainFacets[algoliaAttr] ?? {}
+
+    // Helper: slug → proper display name
+    // "clothing-shoes-jewelry" → "Clothing, Shoes & Jewelry"
+    const catName = (slug: string) =>
+      categoryLookup[slug] ??
+      slug.replace(/-/g, ' ').replace(/\w/g, (l) => l.toUpperCase())
 
     // ── Brands ───────────────────────────────────────────────────────────────
     const activeBrands = query.brand
@@ -576,12 +583,12 @@ export class AlgoliaService implements OnModuleInit {
         selected: activeBrands.includes(value.toLowerCase()),
       }))
 
-    // ── Categories ───────────────────────────────────────────────────────────
+    // ── Categories — use proper name from categories collection ─────────────
     const categories: FacetValue[] = Object.entries(counts('category'))
       .sort((a, b) => b[1] - a[1])
       .map(([value, count]) => ({
         value,
-        label: value.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+        label:    catName(value),   // "Clothing, Shoes & Jewelry" not "Clothing Shoes Jewelry"
         count,
         selected: query.category === value,
       }))
@@ -591,7 +598,7 @@ export class AlgoliaService implements OnModuleInit {
       .sort((a, b) => b[1] - a[1])
       .map(([value, count]) => ({
         value,
-        label: value.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+        label:    catName(value),
         count,
         selected: query.subcategory === value,
       }))
@@ -827,22 +834,210 @@ export class AlgoliaService implements OnModuleInit {
     return applied
   }
 
+  // ── Search suggestions — Algolia-powered autocomplete ────────────────────
+  // Returns 3 types of suggestions in one fast Algolia call:
+  //   - products:   top 4 matching products (title, image, price, brand)
+  //   - brands:     matching brands (from facet counts)
+  //   - categories: matching categories (from facet counts)
+  //   - queries:    helper search variations (under $X, brand filter)
+  //
+  // Uses hitsPerPage=4 + restrictSearchableAttributes for speed.
+  // Falls back to in-memory Fuse.js if Algolia is unavailable.
+
+  async getSuggestions(
+    q: string,
+    liveCategories: any[] = [],
+    allProducts: any[] = [],
+  ): Promise<{ suggestions: any[] }> {
+    if (!q || q.trim().length < 2) return { suggestions: [] }
+
+    const searchText = q.trim().slice(0, 100)
+
+    // ── Algolia path ────────────────────────────────────────────────────────
+    if (this.client) {
+      try {
+        const response = await this.client.search({
+          requests: [
+            // Request 0: top product hits
+            {
+              indexName:  this.INDEX_NAME,
+              query:      searchText,
+              hitsPerPage: 5,
+              attributesToRetrieve: [
+                'id', 'slug', 'asin', 'title', 'brand',
+                'price', 'pricing', 'avgRating', 'ratings',
+                'media', 'category', 'subcategory',
+                'isPrime', 'onSale', 'badges',
+              ],
+              attributesToHighlight: ['title', 'brand'],
+              highlightPreTag:  '<mark>',
+              highlightPostTag: '</mark>',
+              queryType:  'prefixLast',
+              typoTolerance: true,
+            },
+            // Request 1: brand + category facet counts (0 hits, just counts)
+            {
+              indexName:  this.INDEX_NAME,
+              query:      searchText,
+              hitsPerPage: 0,
+              facets:    ['brand', 'category', 'subcategory'],
+              queryType: 'prefixLast',
+            },
+          ],
+        })
+
+        const hitsResult   = response.results[0] as any
+        const facetsResult = response.results[1] as any
+        const suggestions: any[] = []
+
+        // ── Product suggestions ─────────────────────────────────────────────
+        for (const hit of hitsResult.hits ?? []) {
+          const { objectID, _highlightResult, _rankingInfo, _distinctSeqID, ...rest } = hit as any
+          suggestions.push({
+            type:      'product',
+            title:     rest.title,
+            titleHighlight: _highlightResult?.title?.value ?? rest.title,
+            slug:      rest.slug,
+            asin:      rest.asin ?? null,
+            image:     rest.media?.mainImage ?? rest.media?.images?.[0]?.url ?? '',
+            price:     rest.price ?? rest.pricing?.current ?? null,
+            original:  rest.pricing?.original ?? null,
+            discount:  rest.pricing?.discountPercent ?? 0,
+            rating:    rest.avgRating ?? rest.ratings?.average ?? null,
+            brand:     rest.brand ?? null,
+            category:  rest.category ?? null,
+            isPrime:   rest.isPrime ?? false,
+            onSale:    rest.onSale ?? false,
+            badge:     rest.badges?.isAmazonsChoice ? "Amazon's Choice"
+                     : rest.badges?.isBestSeller   ? 'Best Seller'
+                     : null,
+          })
+        }
+
+        // ── Brand suggestions — from facet counts ───────────────────────────
+        const brandFacets = facetsResult?.facets?.brand ?? {}
+        const topBrands = Object.entries(brandFacets)
+          .sort((a: any, b: any) => b[1] - a[1])
+          .slice(0, 2)
+          .filter(([name]) => name.toLowerCase().includes(searchText.toLowerCase()) || suggestions.some(s => s.brand === name))
+
+        for (const [brand, count] of topBrands) {
+          suggestions.push({
+            type:    'brand',
+            title:   brand,
+            label:   `${brand} (${count} products)`,
+            query:   `?brand=${encodeURIComponent(brand)}`,
+            count:   count as number,
+          })
+        }
+
+        // ── Category suggestions — from facet counts ────────────────────────
+        const catFacets = facetsResult?.facets?.category ?? {}
+        const topCats = Object.entries(catFacets)
+          .sort((a: any, b: any) => b[1] - a[1])
+          .slice(0, 2)
+
+        for (const [catSlug, count] of topCats) {
+          const catObj = liveCategories.find((c: any) => c.slug === catSlug)
+          suggestions.push({
+            type:    'category',
+            title:   catObj?.name ?? catSlug.replace(/-/g, ' ').replace(/\w/g, (l: string) => l.toUpperCase()),
+            slug:    catSlug,
+            image:   catObj?.image ?? null,
+            count:   count as number,
+          })
+        }
+
+        // ── Query helper suggestions ────────────────────────────────────────
+        const totalHits = hitsResult.nbHits ?? 0
+        if (totalHits > 0) {
+          suggestions.push({
+            type:  'query',
+            title: `${searchText} under $500`,
+            query: `?q=${encodeURIComponent(searchText)}&maxPrice=500`,
+          })
+          if (totalHits > 10) {
+            suggestions.push({
+              type:  'query',
+              title: `Top rated ${searchText}`,
+              query: `?q=${encodeURIComponent(searchText)}&sort=rating_desc`,
+            })
+          }
+        }
+
+        return { suggestions: suggestions.slice(0, 10) }
+
+      } catch (err: any) {
+        this.logger.error(`Algolia suggestions failed: ${err.message}`)
+        // Fall through to Fuse.js fallback below
+      }
+    }
+
+    // ── Fuse.js fallback (Algolia down) ─────────────────────────────────────
+    return this.fusesuggestions(searchText, liveCategories, allProducts)
+  }
+
+  // ── Fuse.js fallback suggestions ─────────────────────────────────────────
+  private fusesuggestions(q: string, liveCategories: any[], allProducts: any[]) {
+    const Fuse = require('fuse.js')
+    const suggestions: any[] = []
+
+    new Fuse.default(allProducts, {
+      keys: ['title', 'brand', 'tags'],
+      threshold: 0.3,
+      includeScore: true,
+    })
+      .search(q)
+      .slice(0, 4)
+      .forEach(({ item }: any) => {
+        const p = item as any
+        suggestions.push({
+          type:      'product',
+          title:     p.title,
+          slug:      p.slug,
+          asin:      p.asin ?? null,
+          image:     p.media?.mainImage ?? p.media?.images?.[0]?.url ?? '',
+          price:     p.price ?? p.pricing?.current ?? null,
+          rating:    p.avgRating ?? p.ratings?.average ?? null,
+          brand:     p.brand ?? null,
+          category:  p.category ?? null,
+        })
+      })
+
+    liveCategories
+      .filter((c: any) => c.name?.toLowerCase().includes(q.toLowerCase()))
+      .slice(0, 2)
+      .forEach((c: any) => suggestions.push({
+        type:  'category',
+        title: c.name,
+        slug:  c.slug,
+        image: c.image ?? null,
+      }))
+
+    suggestions.push({
+      type:  'query',
+      title: `${q} under $500`,
+      query: `?q=${encodeURIComponent(q)}&maxPrice=500`,
+    })
+
+    return { suggestions: suggestions.slice(0, 8) }
+  }
+
   // ── Main search ───────────────────────────────────────────────────────────
   // This is the only public method products.service.ts calls.
   // Returns products + fully query-aware facets in one response.
 
   async fullSearch(
     query: SearchQuery,
-    // allProducts is still passed for the in-memory fallback path
     allProducts: any[],
+    liveCategories: any[] = [],
   ): Promise<{ data: any; cacheHit: false }> {
     if (!this.client) {
-      // Graceful fallback — Algolia down, use in-memory basic search
       return this.fallbackSearch(query, allProducts)
     }
 
     try {
-      return await this.algoliaSearch(query, allProducts)
+      return await this.algoliaSearch(query, allProducts, liveCategories)
     } catch (err: any) {
       this.logger.error(`Algolia search failed: ${err.message} — falling back to in-memory`)
       return this.fallbackSearch(query, allProducts)
@@ -854,6 +1049,7 @@ export class AlgoliaService implements OnModuleInit {
   private async algoliaSearch(
     query: SearchQuery,
     allProducts: any[],
+    liveCategories: any[] = [],
   ): Promise<{ data: any; cacheHit: false }> {
     const indexName   = this.getSortIndex(query.sort)
     const baseFilters = this.buildFilters(query)
@@ -896,49 +1092,31 @@ export class AlgoliaService implements OnModuleInit {
 
     const mainRequest: any = {
       indexName,
-      query:     searchText,
-      filters:   baseFilters,
-
-      // ── Facets to compute counts for ────────────────────────────────────────
-      facets: [
-        'brand', 'category', 'subcategory',
-        'colors', 'sizes', 'condition', 'warehouse',
-        'attrValues',
-        'inStock', 'isPrime', 'freeShipping', 'expressAvailable',
-        'onSale', 'bestSeller', 'featured',
-        'newArrival', 'topRated', 'trending',
-      ],
-
-      // ── Pagination ────────────────────────────────────────────────────────────
-      // NOTE: Algolia v5 automatically returns facets_stats for numeric attributes
-      // that are configured in numericAttributesForFiltering — no extra param needed.
+      query:      searchText,
+      filters:    baseFilters,
       hitsPerPage,
 
-      // ── What to return ────────────────────────────────────────────────────────
-      attributesToRetrieve: ['*'],
+      // facets: ['*'] → return ALL configured facets, same as Algolia dashboard
+      // This is the key fix: instead of listing specific facets, we use wildcard
+      // so whatever is configured on the index is returned — dashboard exact match
+      facets: ['*'],
 
-      // ── Highlighting — wrap matched words in <mark> tags ──────────────────────
-      // Frontend can use _highlightResult.title.value to show highlighted titles
-      attributesToHighlight: ['title', 'brand', 'description'],
-      attributesToSnippet:   ['description:20', 'featureBullets:15'],
+      // maxValuesPerFacet (NOT maxFacetHits — that was wrong param):
+      // Controls how many values are returned per facet attribute.
+      // Dashboard default is 100, so we match it here.
+      maxValuesPerFacet: 100,
+
+      // Return all fields
+      attributesToRetrieve:  ['*'],
+
+      // Highlighting — matched words in <mark> tags
+      attributesToHighlight: ['title', 'brand'],
       highlightPreTag:       '<mark>',
       highlightPostTag:      '</mark>',
 
-      // ── Analytics — per-query tracking (NOT index setting) ────────────────────
-      // queryID returned enables click analytics on frontend
+      // Analytics
       analytics:      true,
       clickAnalytics: true,
-
-      // ── Typo tolerance ────────────────────────────────────────────────────────
-      typoTolerance: true,
-
-
-      // ── Query strategy ────────────────────────────────────────────────────────
-      // prefixQuery: searches as user types (instant search)
-      queryType: 'prefixLast',   // prefix match on LAST word only (fastest + most accurate)
-
-      // ── Facet counts accuracy ─────────────────────────────────────────────────
-      maxFacetHits: 100,         // max values per facet in response
     }
 
     // ── Apply pagination to main request ────────────────────────────────────────
@@ -965,11 +1143,13 @@ export class AlgoliaService implements OnModuleInit {
       activeDimensions.push(qKey)
       requests.push({
         indexName,
-        query:     searchText,
-        filters:   this.buildFilters(query, qKey),  // exclude this dim
-        facets:    [dim.algoliaAttr],
-        page:      0,
-        hitsPerPage: 0,  // no hits needed, just facet counts
+        query:           searchText,
+        filters:         this.buildFilters(query, qKey), // exclude this dim
+        facets:          [dim.algoliaAttr],
+        maxValuesPerFacet: 100,
+        page:            0,
+        hitsPerPage:     0,   // no hits needed, just counts
+        analytics:       false, // don't track disjunctive helper queries
       })
     }
 
@@ -1055,16 +1235,17 @@ export class AlgoliaService implements OnModuleInit {
           mode:         'offset' as const,
         }
 
-    // ── Build facets only when requested (includeFacets=true) ─────────────────
-    const facets = query.includeFacets
-      ? this.buildFacetsResponse(
-          mainResult.facets ?? {},
-          disjFacets,
-          facetStats,
-          colorHexMap,
-          query,
-        )
-      : null
+    // ── Facets — 100% raw Algolia passthrough ────────────────────────────────
+    // Return EXACTLY what Algolia returns — same as dashboard.
+    // Only addition: merge disjunctive counts so multi-select shows correct totals.
+    let facets: any = null
+    if (query.includeFacets) {
+      const raw = { ...(mainResult.facets ?? {}) }
+      for (const [attr, counts] of Object.entries(disjFacets)) {
+        raw[attr] = counts
+      }
+      facets = raw
+    }
 
     return {
       data: {
