@@ -90,9 +90,9 @@ export class ProductsController {
   @Get('search/suggestions')
   @ApiOperation({ summary: 'Search suggestions / autocomplete' })
   @ApiQuery({ name: 'q', required: true, description: 'Search query (min 2 chars)' })
-  getSuggestions(@Query('q') q: string) {
+  async getSuggestions(@Query('q') q: string) {
     return successResponse(
-      this.productsService.getSuggestions(q, this.categoriesService.categories),
+      await this.productsService.getSuggestions(q, this.categoriesService.categories),
     )
   }
 

@@ -5,7 +5,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "James",
     "lastName": "Smith",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://res.cloudinary.com/dsqjkgwrz/image/upload/v1774000951/pikly/products/hp_computer_accessories_0001.jpg",
     "phone": "+1-555-5581",
     "role": "admin",
     "addresses": [
@@ -33,7 +33,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Emma",
     "lastName": "Johnson",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://res.cloudinary.com/dsqjkgwrz/image/upload/v1774001076/pikly/products/men_fashion_0001.jpg",
     "phone": "+1-555-9256",
     "role": "customer",
     "addresses": [
@@ -61,7 +61,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Liam",
     "lastName": "Williams",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://res.cloudinary.com/dsqjkgwrz/image/upload/v1774001176/pikly/products/skincare_0001.jpg",
     "phone": "+1-555-5377",
     "role": "customer",
     "addresses": [
@@ -89,7 +89,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Olivia",
     "lastName": "Brown",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://res.cloudinary.com/dsqjkgwrz/image/upload/v1774001166/pikly/products/fitness_gym_0001.jpg",
     "phone": "+1-555-4714",
     "role": "customer",
     "addresses": [
@@ -117,7 +117,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Noah",
     "lastName": "Jones",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://res.cloudinary.com/dsqjkgwrz/image/upload/v1774001198/pikly/products/building_blocks_toy_0001.jpg",
     "phone": "+1-555-1794",
     "role": "customer",
     "addresses": [
@@ -145,7 +145,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Ava",
     "lastName": "Garcia",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://res.cloudinary.com/dsqjkgwrz/image/upload/v1774001132/pikly/products/lodge_kitchen_cookware_0001.jpg",
     "phone": "+1-555-3631",
     "role": "customer",
     "addresses": [
@@ -173,7 +173,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "William",
     "lastName": "Miller",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://res.cloudinary.com/dsqjkgwrz/image/upload/v1774001226/pikly/products/lindt_chocolate_candy_0001.jpg",
     "phone": "+1-555-7382",
     "role": "customer",
     "addresses": [
@@ -201,7 +201,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Sophia",
     "lastName": "Davis",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://res.cloudinary.com/dsqjkgwrz/image/upload/v1774001262/pikly/products/books_reading_0001.jpg",
     "phone": "+1-555-6599",
     "role": "customer",
     "addresses": [
@@ -229,7 +229,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Benjamin",
     "lastName": "Wilson",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://res.cloudinary.com/dsqjkgwrz/image/upload/v1774001240/pikly/products/vitamins_supplement_0001.jpg",
     "phone": "+1-555-9303",
     "role": "customer",
     "addresses": [
@@ -257,7 +257,7 @@
     "passwordHash": "$2b$10$exampleHashedPasswordForDemoOnly123456789",
     "firstName": "Isabella",
     "lastName": "Moore",
-    "avatar": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&auto=format",
+    "avatar": "https://res.cloudinary.com/dsqjkgwrz/image/upload/v1774001281/pikly/products/video_game_controller_0001.jpg",
     "phone": "+1-555-6935",
     "role": "customer",
     "addresses": [

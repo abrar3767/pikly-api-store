@@ -144,7 +144,7 @@ export class ProductsService implements OnModuleInit {
 
   // ── Search suggestions ─────────────────────────────────────────────────────
 
-  getSuggestions(q: string, liveCategories: any[] = []) {
+  async getSuggestions(q: string, liveCategories: any[] = []) {
     // Delegate to AlgoliaService — Algolia-powered with Fuse.js fallback
     return this.algolia.getSuggestions(q, liveCategories, this.findActiveProducts())
   }
